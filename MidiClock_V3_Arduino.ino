@@ -55,7 +55,8 @@ Button2 btnHelper_PRESET2;
 Button2 btnHelper_PRESET3;
 
 //SoftwareSerial(rxPin, txPin, inverse_logic)
-SoftwareSerial midi(A2, A3);
+SoftwareSerial midi(16, A3);
+//SoftwareSerial midi = SoftwareSerial(9, A3);
 //SendOnlySoftwareSerial midi(A3);
 
 uint8_t bpm_blink_timer = 1;
@@ -97,7 +98,7 @@ byte sysexBuffer[BUFFERSIZE];
 void setup()
 {
   iNextPreset = NEXTPRESET_NONE;
-  Serial.begin(9600);
+  Serial.begin(19200);
   //delay(251);
   pixels.begin();
   ledInit();
@@ -275,11 +276,45 @@ void loop()
       bNewPresetSelected = false;
     }
 
+  checkMidiUSB();
+  checkMidiDIN();
+
+
+}//
+
+void checkMidiUSB(){
   midiEventPacket_t rx = MidiUSB.read();
   if (rx.header != 0) {
     processMidiIn( rx );
   }
-}//
+}
+
+void checkMidiDIN(){
+  //Serial.println("x");
+  midiEventPacket_t p;
+    while (midi.available()>0){
+      uint8_t x = midi.read();
+      p.byte1 = x;
+      if( x==0xF0 ){
+        iClockMode = CLOCKMODE_MIXXX;
+        fillSysexBuffer( p, 1 );
+        //Serial.println("received Sysex START");
+      }else if(x==0xF7){
+        //Serial.println("received Sysex END");
+        fillSysexBuffer( p, 1 );
+        processSysexBuffer();
+        midi.flush();
+      }else{
+        //Serial.println(String(x, 16));
+        fillSysexBuffer( p, 1 );
+      } 
+      //commandByte = Serial.read();//read first byte
+      //noteByte = Serial.read();//read next byte
+      //velocityByte = Serial.read();//read final byte
+      //Serial.println( "Midi DIN in" );
+    }
+}
+
 
 void processMidiIn(midiEventPacket_t pRX){
   switch (pRX.header & 0x0F) {
@@ -317,7 +352,7 @@ void processMidiIn(midiEventPacket_t pRX){
       // process completed sysex buffer
       // init sysex buffer empty
       fillSysexBuffer( pRX, 1 );
-      Serial.println("header 0x05");
+      //Serial.println("header 0x05");
       break;
     case 0x06:  // SysEx ends with the following two bytes
       // append sysex buffer with 2 bytes
@@ -809,8 +844,8 @@ void processSysexBuffer(){
           uClock.start();
           //showBPM(fBPM_Sysex);
         }
-        Serial.print("Found BPM: ");
-        Serial.println(String(fBPM_Sysex, 10));
+        //Serial.print("Found BPM: ");
+        //Serial.println(String(fBPM_Sysex, 10));
 
         break;
       }
