@@ -1,6 +1,3 @@
-// Tempo change when stopped deletes 'BPM'
-
-
 #include <SendOnlySoftwareSerial.h>
 #include <SoftwareSerial.h>
 
@@ -23,7 +20,6 @@ SSD1306AsciiWire oled;
 #define VERSION "3.10"
 #define DEMUX_PIN A0
 
-//const int signal_pin = A0; // Pin Connected to Sig pin of CD74HC4067
 CD74HC4067 mux(6,7,8,9);  // create a new CD74HC4067 object with its four select lines
 
 #define NUM_LEDS 4
@@ -54,10 +50,7 @@ Button2 btnHelper_PRESET1;
 Button2 btnHelper_PRESET2;
 Button2 btnHelper_PRESET3;
 
-//SoftwareSerial(rxPin, txPin, inverse_logic)
 SoftwareSerial midi(16, A3);
-//SoftwareSerial midi = SoftwareSerial(9, A3);
-//SendOnlySoftwareSerial midi(A3);
 
 uint8_t bpm_blink_timer = 1;
 float fBPM_Cache = 94.0;
@@ -88,15 +81,10 @@ byte muxValue[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; // The value of the Buttons
 #define BUFFERSIZE 60
 byte sysexBuffer[BUFFERSIZE];
 
-//----Display
-//----SCL - 22
-//----SDA - 21
-//#define OLED_RESET -1 // not used / nicht genutzt bei diesem Display
-//Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
+midiEventPacket_t midiPacket;
 
 
-void setup()
-{
+void setup(){
   iNextPreset = NEXTPRESET_NONE;
   Serial.begin(19200);
   //delay(251);
@@ -106,7 +94,6 @@ void setup()
   pinMode(DEMUX_PIN, INPUT); // Set as input for reading through signal pin
 
   tapTempo.setTotalTapValues(4);
-  //tapTempo.setBPM(fBPM_Cache);
 
   // Inits the clock
   uClock.init();
@@ -115,15 +102,9 @@ void setup()
   // Set the callback function for MIDI Start and Stop messages.
   uClock.setOnClockStartOutput(onClockStart);  
   uClock.setOnClockStopOutput(onClockStop);
-  // Set the clock BPM to 126 BPM
-  //uClock.setTempo( tapTempo.getBPM() );
+  // Set the clock BPM
   setGlobalBPM( fBPM_Cache );
-  // Starts the clock, tick-tac-tick-tac...
-  //uClock.start();
   
-  Serial.print("Clock Ready ... "); Serial.println( tapTempo.getBPM() );
-
-  //btnHelper_TAP.begin(TAP_BUTTON, INPUT_PULLDOWN, true);
   btnHelper_TAP.begin(VIRTUAL_PIN);
   btnHelper_TAP.setButtonStateFunction(tapButtonStateHandler);
   btnHelper_TAP.setTapHandler(tapHandler);
@@ -163,13 +144,11 @@ void setup()
   
  
   getPresetsFromEeprom();
-  //delay(1111);
   showInfo(1500);
   ledOff();
 }
 
-void loop()
-{
+void loop(){
   readMux();
   btnHelper_TAP.loop();
   btnHelper_START.loop();
@@ -186,7 +165,6 @@ void loop()
       bNewBPM = true;
       fBPM_Cache = uint8_t(tapTempo.getBPM());
       uClock.setTempo( fBPM_Cache );
-      //tapTempo.setBPM( fBPM_Cache );
       if(bIsPlaying){
         showBPM( fBPM_Cache );
       }else{
@@ -194,9 +172,6 @@ void loop()
       }
     }
   }else if(iClockMode==CLOCKMODE_MIXXX){
-    //Serial.print("tapTempo.getBPM()"); Serial.println(tapTempo.getBPM());
-    //Serial.print("fBPM_Sysex"); Serial.println( fBPM_Sysex );
-    //Serial.print("clock.getTempo()"); Serial.println( uClock.getTempo() );
     if( abs(uClock.getTempo() - fBPM_Sysex) >= .1){
       if( bNudgeActive==false ){
         fBPM_Cache = fBPM_Sysex;
@@ -221,26 +196,23 @@ void loop()
   if(iEncoder!=0){
     if(iClockMode==CLOCKMODE_MASTER){
       if(muxValue[13]==0){
-        //setGlobalBPM( /*tapTempo.getBPM()*/ fBPM_Cache + (iEncoder*1.0) );
         fBPM_Cache += iEncoder;
       }else{
-        //setGlobalBPM( /*tapTempo.getBPM()*/ fBPM_Cache + (iEncoder*5.0) );
         fBPM_Cache += iEncoder*5.0;
       }
       bNewBPM = true;
       setGlobalBPM( fBPM_Cache);
     }else if(iClockMode==CLOCKMODE_MIXXX){
       if(muxValue[13]==0){
-        //setGlobalBPM( /*tapTempo.getBPM()*/ fBPM_Cache + (iEncoder*1.0) );
         fBPM_Sysex += iEncoder*0.01;
         fBPM_Cache = fBPM_Sysex;
       }else{
-        //setGlobalBPM( /*tapTempo.getBPM()*/ fBPM_Cache + (iEncoder*5.0) );
         fBPM_Sysex += iEncoder*1.0;
         fBPM_Cache = fBPM_Sysex;
       }
       bNewBPM = true;
-      setGlobalBPM( fBPM_Cache);
+      showBPM( fBPM_Cache );
+      setGlobalBPM( fBPM_Cache );
     }
     
   }
@@ -251,47 +223,50 @@ void loop()
   }
 
   if(bUpdateStatusDisplay==true){
-    showBPM(fBPM_Cache);
-    oled.setInvertMode( bDisplayInverted );
-    oled.setFont(ZevvPeep8x16);
-    oled.set1X();
-    oled.setRow(6);
-    if( iClockMode == CLOCKMODE_MASTER){
-      oled.setCol(105);
-      oled.print("BPM");
-    }else if( iClockMode == CLOCKMODE_MIXXX ){
-      oled.setCol(88);
-      oled.print("SYSEX");
-    }
+    updateStatusDisplay();
     bUpdateStatusDisplay=false;
   }
 
-    if(bNewPresetSelected == true){
-      oled.setInvertMode( false );
-      oled.setFont(ZevvPeep8x16);
-      oled.set1X();
-      oled.setRow(6);
-      oled.setCol(5);
-      oled.print(sActivePreset);
-      bNewPresetSelected = false;
-    }
+  if(bNewPresetSelected == true){
+    displaySelectedPreset( sActivePreset );
+    bNewPresetSelected = false;
+  }
 
   checkMidiUSB();
   checkMidiDIN();
 
-
 }//
-midiEventPacket_t midiPacket;
+
+void updateStatusDisplay(){
+  showBPM(fBPM_Cache);
+  oled.setInvertMode( bDisplayInverted );
+  oled.setFont(ZevvPeep8x16);
+  oled.set1X();
+  oled.setRow(6);
+  if( iClockMode == CLOCKMODE_MASTER){
+    oled.setCol(105);
+    oled.print("BPM");
+  }else if( iClockMode == CLOCKMODE_MIXXX ){
+    oled.setCol(88);
+    oled.print("SYSEX");
+  }
+}
+
+void displaySelectedPreset(String p){
+  oled.setInvertMode( false );
+  oled.setFont(ZevvPeep8x16);
+  oled.set1X();
+  oled.setRow(6);
+  oled.setCol(5);
+  oled.print( p );
+}
 
 void checkMidiUSB(){
-  //midiEventPacket_t rx = MidiUSB.read();
   midiPacket = MidiUSB.read();
   if (midiPacket.header != 0) {
     processMidiIn( midiPacket );
   }
 }
-
-
 
 void checkMidiDIN(){
     while (midi.available()>0){
@@ -300,15 +275,11 @@ void checkMidiDIN(){
       if( x==0xF0 ){
         iClockMode = CLOCKMODE_MIXXX;
         //fillSysexBuffer( midiPacket, 1 );
-        //Serial.println("received Sysex START");
       }else if(x==0xF7){
-        //Serial.println("received Sysex END");
         //fillSysexBuffer( midiPacket, 1 );
         //processSysexBuffer();
         //midi.flush();
-        
       }else{
-        //Serial.println(String(x, 16));
         //fillSysexBuffer( midiPacket, 1 );
         //processSysexBuffer();
       } 
@@ -351,25 +322,15 @@ void processMidiIn(midiEventPacket_t pRX){
       break;
     case 0x05:  // Single-byte System Common Message or SysEx ends with the following single byte
       // append sysex buffer with 1 byte
-      // process completed sysex buffer
-      // init sysex buffer empty
       fillSysexBuffer( pRX, 1 );
-      //Serial.println("header 0x05");
       break;
     case 0x06:  // SysEx ends with the following two bytes
       // append sysex buffer with 2 bytes
-      // process completed sysex buffer
-      // init sysex buffer empty
       fillSysexBuffer( pRX, 2 );
-      //processSysexBuffer();
-      //Serial.println("header 0x06");
       break;
     case 0x07:  // SysEx ends with the following three bytes
       // append sysex buffer with 3 bytes
-      // process completed sysex buffer
-      // init sysex buffer empty
       fillSysexBuffer( pRX, 3 );
-      //Serial.println("header 0x07");
       break;
     case 0x0F:  // Single Byte, TuneRequest, Clock, Start, Continue, Stop, etc.
       // process since byte messages
@@ -570,14 +531,12 @@ void preset1LongClickDetected(Button2& btn) {
 
 void preset1ChangeHandler( Button2& btn ){
   if(iClockMode == CLOCKMODE_MIXXX){
-    //Serial.println("Preset1 Button changed " + String(btn.isPressed() ) );
     nudgeMinus( btn.isPressed() );
   }
 }
 
 void preset3ChangeHandler( Button2& btn ){
   if(iClockMode == CLOCKMODE_MIXXX){
-    //Serial.println("Preset2 Button changed " + String(btn.isPressed() ) );
     nudgePlus( btn.isPressed() );
   }
 }
@@ -718,8 +677,6 @@ int queryEncoder(){
    }
    
    if (encoder0Pos != encoder0PosOld){
-     //Serial.print (encoder0Pos);
-      //Serial.print(" ");
      if(encoder0Pos%2==0){
       if(encoder0Pos<encoder0PosOld){
         iReturn = -1;
@@ -727,21 +684,17 @@ int queryEncoder(){
         iReturn = 1;
       }
      }
-     //Serial.println(iReturn);
      encoder0PosOld = encoder0Pos;
    }
-   
    encoder0PinALast = muxValue[14];
   return iReturn;
 }
 
 void clearDisplay(){
-  //oled.setFont(utf8font10x16);
   oled.clear();
 }
 
 void testDisplay(){
-  //oled.setFont(utf8font10x16);
   oled.clear();
   oled.print("Hello world!");
 }
@@ -795,9 +748,7 @@ void showInfo(int pWaitMS){
 
 
 void fillSysexBuffer(midiEventPacket_t pRX, uint8_t pSize){
-  //Serial.println("received data " + String(pRX.byte1, 16));
   if(pRX.byte1 == 0xF0){
-    //Serial.println("Clear buffer");
     clearSysexBuffer();
   }
 
@@ -815,9 +766,6 @@ void fillSysexBuffer(midiEventPacket_t pRX, uint8_t pSize){
       }
       break; //exit for
     }
-    //if(sysexBuffer[i] == 0xF7){
-    //  processSysexBuffer();
-    //}
   }
 }
 
@@ -830,12 +778,9 @@ void processSysexBuffer(){
     }
     if(sysexBuffer[i] == 0xF7){
       bBufferComplete = true;
-      //Serial.println("Sysex Buffer processing: Buffer complete ");
     }
   }
   if( (x > 2) && (bBufferComplete) ){
-    //Serial.println("Sysex Buffer processing: " + String(x));
-    //"0x7F 0x01 0x1"; BPM 
     for(int i=0; i<BUFFERSIZE; i++){
       if((sysexBuffer[i] == 0x7F) && (sysexBuffer[i+1] == 0x01) /*&& (sysexBuffer[i+2] == 0x11)*/){
         //BPM. Since we only have 1 clock instance there is no need to distinguish between decks
@@ -847,11 +792,7 @@ void processSysexBuffer(){
           fBPM_Cache = temp;
           setGlobalBPM( fBPM_Sysex );
           uClock.start();
-          //showBPM(fBPM_Sysex);
         }
-        //Serial.print("Found BPM: ");
-        //Serial.println(String(fBPM_Sysex, 10));
-
         break;
       }
     }
