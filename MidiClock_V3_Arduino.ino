@@ -426,7 +426,7 @@ void ClockOut96PPQN(uint32_t tick) {
 
 // The callback function wich will be called when clock starts by using Clock.start() method.
 void onClockStart() {
-  sendMidiStart();
+  //sendMidiStart();
 }
 
 // The callback function wich will be called when clock stops by using Clock.stop() method.
@@ -510,7 +510,10 @@ void restartHandler(Button2& btn){
   if(iClockMode==CLOCKMODE_MIXXX){
     bNewBPM = true;
     showBPM( fBPM_Cache );
+    sendMidiStop();
+    sendMidiStart();
     uClock.start();
+    bIsPlaying = true;
   }
   
 }
@@ -519,6 +522,7 @@ void startPlaying(){
   if(!bIsPlaying){
     bNewBPM = true;
     showBPM( fBPM_Cache );
+    sendMidiStart();
     uClock.start();
   }else{
     bQuantizeRestartWaiting = true;
@@ -864,7 +868,7 @@ void nudgePlus(bool pOnOff){
   if(pOnOff){
     //fBPM_NudgeCache = tapTempo.getBPM();//uClock.getTempo();
     bNudgeActive=true;
-    fBPM_Cache *= 1.05;
+    fBPM_Cache *= 1.075;
     setGlobalBPM( fBPM_Cache);
   }else{
     bNudgeActive = false;
@@ -877,7 +881,7 @@ void nudgeMinus(bool pOnOff){
   if(pOnOff){
     //fBPM_NudgeCache = tapTempo.getBPM(); //uClock.getTempo();
     bNudgeActive = true;
-    fBPM_Cache *= 0.95;
+    fBPM_Cache *= 0.925;
     setGlobalBPM( fBPM_Cache );
   }else{
     fBPM_Cache = fBPM_Sysex;
