@@ -20,7 +20,7 @@
 #define DISPLAY_I2C_ADDRESS 0x3C
 SSD1306AsciiWire oled;
 
-#define VERSION "3.02"
+#define VERSION "3.10"
 #define DEMUX_PIN A0
 
 //const int signal_pin = A0; // Pin Connected to Sig pin of CD74HC4067
@@ -281,37 +281,39 @@ void loop()
 
 
 }//
+midiEventPacket_t midiPacket;
 
 void checkMidiUSB(){
-  midiEventPacket_t rx = MidiUSB.read();
-  if (rx.header != 0) {
-    processMidiIn( rx );
+  //midiEventPacket_t rx = MidiUSB.read();
+  midiPacket = MidiUSB.read();
+  if (midiPacket.header != 0) {
+    processMidiIn( midiPacket );
   }
 }
 
+
+
 void checkMidiDIN(){
-  //Serial.println("x");
-  midiEventPacket_t p;
     while (midi.available()>0){
       uint8_t x = midi.read();
-      p.byte1 = x;
+      midiPacket.byte1 = x;
       if( x==0xF0 ){
         iClockMode = CLOCKMODE_MIXXX;
-        fillSysexBuffer( p, 1 );
+        //fillSysexBuffer( midiPacket, 1 );
         //Serial.println("received Sysex START");
       }else if(x==0xF7){
         //Serial.println("received Sysex END");
-        fillSysexBuffer( p, 1 );
-        processSysexBuffer();
-        midi.flush();
+        //fillSysexBuffer( midiPacket, 1 );
+        //processSysexBuffer();
+        //midi.flush();
+        
       }else{
         //Serial.println(String(x, 16));
-        fillSysexBuffer( p, 1 );
+        //fillSysexBuffer( midiPacket, 1 );
+        //processSysexBuffer();
       } 
-      //commandByte = Serial.read();//read first byte
-      //noteByte = Serial.read();//read next byte
-      //velocityByte = Serial.read();//read final byte
-      //Serial.println( "Midi DIN in" );
+      fillSysexBuffer( midiPacket, 1 );
+      processSysexBuffer();
     }
 }
 
@@ -359,7 +361,7 @@ void processMidiIn(midiEventPacket_t pRX){
       // process completed sysex buffer
       // init sysex buffer empty
       fillSysexBuffer( pRX, 2 );
-      processSysexBuffer();
+      //processSysexBuffer();
       //Serial.println("header 0x06");
       break;
     case 0x07:  // SysEx ends with the following three bytes
@@ -367,13 +369,13 @@ void processMidiIn(midiEventPacket_t pRX){
       // process completed sysex buffer
       // init sysex buffer empty
       fillSysexBuffer( pRX, 3 );
-      Serial.println("header 0x07");
+      //Serial.println("header 0x07");
       break;
     case 0x0F:  // Single Byte, TuneRequest, Clock, Start, Continue, Stop, etc.
       // process since byte messages
       break;
-    
   }
+  processSysexBuffer();
 }
 
 void selectPreset(uint8_t pPresetID){
@@ -506,8 +508,6 @@ void startHandler(Button2& btn) {
 
 void restartHandler(Button2& btn){
   if(iClockMode==CLOCKMODE_MIXXX){
-    //stopPlaying();
-    //startPlaying();
     bNewBPM = true;
     showBPM( fBPM_Cache );
     uClock.start();
@@ -516,16 +516,15 @@ void restartHandler(Button2& btn){
 }
 
 void startPlaying(){
-  //Serial.println("startHandler");
-    if(!bIsPlaying){
-      bNewBPM = true;
-      showBPM( fBPM_Cache );
-      uClock.start();
-    }else{
-      bQuantizeRestartWaiting = true;
-    }
-    bIsPlaying = true;
-    showStatus(iMeasureCount+1, false);
+  if(!bIsPlaying){
+    bNewBPM = true;
+    showBPM( fBPM_Cache );
+    uClock.start();
+  }else{
+    bQuantizeRestartWaiting = true;
+  }
+  bIsPlaying = true;
+  showStatus(iMeasureCount+1, false);
 }
 
 byte startButtonStateHandler() {
@@ -812,34 +811,36 @@ void fillSysexBuffer(midiEventPacket_t pRX, uint8_t pSize){
       }
       break; //exit for
     }
-    if(sysexBuffer[i] == 0xF7){
-      processSysexBuffer();
-    }
+    //if(sysexBuffer[i] == 0xF7){
+    //  processSysexBuffer();
+    //}
   }
 }
 
 void processSysexBuffer(){
+  bool bBufferComplete = false;
   uint8_t x=0;
   for(int i=0; i<BUFFERSIZE; i++){
     if(sysexBuffer[i] != 0xFF){
       x++;
     }
+    if(sysexBuffer[i] == 0xF7){
+      bBufferComplete = true;
+      //Serial.println("Sysex Buffer processing: Buffer complete ");
+    }
   }
-  if(x > 10){
+  if( (x > 2) && (bBufferComplete) ){
     //Serial.println("Sysex Buffer processing: " + String(x));
     //"0x7F 0x01 0x1"; BPM 
     for(int i=0; i<BUFFERSIZE; i++){
-      if((sysexBuffer[i] == 0x7F) && (sysexBuffer[i+1] == 0x01) && (sysexBuffer[i+2] == 0x11)){
-        //BPM Deck 1
-        
+      if((sysexBuffer[i] == 0x7F) && (sysexBuffer[i+1] == 0x01) /*&& (sysexBuffer[i+2] == 0x11)*/){
+        //BPM. Since we only have 1 clock instance there is no need to distinguish between decks
         String s = String(sysexBuffer[i+3], 16) + String(sysexBuffer[i+4], 16) + String(sysexBuffer[i+5], 16) + String(sysexBuffer[i+6], 16) + String(sysexBuffer[i+7], 16);
-        //float fBPM = s.toInt();
         float temp = s.toInt();
         temp /= 100.0;
         if(temp > 10.0 ){
           fBPM_Sysex = temp;
           fBPM_Cache = temp;
-          //bNewBPM = true;
           setGlobalBPM( fBPM_Sysex );
           uClock.start();
           //showBPM(fBPM_Sysex);
