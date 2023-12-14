@@ -74,6 +74,13 @@ bool bNewPresetSelected = false;
 
 #define CLOCKMODE_MASTER 1
 #define CLOCKMODE_MIXXX 2 
+
+// you can define whether clock-ticks ("0xF8") are sent continuously or only when the box is playing
+// First option might help syncing, e.g., Ableton and other products that adopt to midi clock rather slowly 
+#define SENDCLOCK_ALWAYS 1
+#define SENDCLOCK_WHENPLAYING 2
+
+uint8_t iClockBehaviour = SENDCLOCK_ALWAYS;
 uint8_t iClockMode = CLOCKMODE_MASTER;
 
 byte muxValue[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; // The value of the Buttons as read from the multiplexer
@@ -146,6 +153,10 @@ void setup(){
   getPresetsFromEeprom();
   showInfo(1500);
   ledOff();
+
+  if(iClockBehaviour == SENDCLOCK_ALWAYS){
+    uClock.start();
+  }
 }
 
 void loop(){
@@ -391,8 +402,8 @@ void onClockStart() {
 
 // The callback function wich will be called when clock stops by using Clock.stop() method.
 void onClockStop() {
-  sendMidiStop();
-  ledOff();
+  //sendMidiStop();
+  //ledOff();
 }
 
 void sendMidiClock(){
@@ -427,7 +438,7 @@ void handle_bpm_led(uint32_t tick)
   }
   if ( !(tick % (96)) || (tick == 1) ) {  // first compass step will flash longer
     bpm_blink_timer = 12;
-    digitalWrite(LED_BUILTIN, HIGH);
+    //digitalWrite(LED_BUILTIN, HIGH);
     iMeasureCount = 0;
     //ledIndicateMeasure( iMeasureCount );
     ledIndicateStart();
@@ -438,13 +449,13 @@ void handle_bpm_led(uint32_t tick)
   } else if ( !(tick % (24)) ) {   // each quarter led on
     bpm_blink_timer = 12;
     iMeasureCount++;
-    digitalWrite(LED_BUILTIN, HIGH);
+    //digitalWrite(LED_BUILTIN, HIGH);
     ledIndicateMeasure( iMeasureCount );
     //showStatus(iMeasureCount+1, true);
     showStatus(0, true);
     
   } else if ( !(tick % bpm_blink_timer) ) { // get led off
-    digitalWrite(LED_BUILTIN, LOW);
+    //digitalWrite(LED_BUILTIN, LOW);
     if(!bQuantizeRestartWaiting){
       ledOff();
     }
@@ -472,7 +483,9 @@ void restartHandler(Button2& btn){
     showBPM( fBPM_Cache );
     sendMidiStop();
     sendMidiStart();
-    uClock.start();
+    if(iClockBehaviour == SENDCLOCK_WHENPLAYING){
+      uClock.start();
+    }
     bIsPlaying = true;
   }
   
@@ -483,7 +496,7 @@ void startPlaying(){
     bNewBPM = true;
     showBPM( fBPM_Cache );
     sendMidiStart();
-    uClock.start();
+    uClock.start(); //if already running this causes a clock reset (-> LED handling, tick,)
   }else{
     bQuantizeRestartWaiting = true;
   }
@@ -502,8 +515,12 @@ void stopHandler(Button2& btn) {
 void stopPlaying(){
   bIsPlaying = false;
   bQuantizeRestartWaiting = false;
-  uClock.stop();
+  sendMidiStop();
+  ledOff();
   showStatus(iMeasureCount+1, false);
+  if(iClockBehaviour == SENDCLOCK_WHENPLAYING){
+      uClock.stop();
+    }
 }
 
 byte stopButtonStateHandler() {
@@ -582,11 +599,13 @@ void preset3LongClickDetected(Button2& btn) {
 }
 
 void ledIndicateStart(){
-  pixels.clear();
-  for(int i=0;i<NUM_LEDS; i++){
-    pixels.setPixelColor(i, pixels.Color(LED_OFF, LED_ON*.5, LED_OFF));
-  }
+  if(bIsPlaying){
+    pixels.clear();
+    for(int i=0;i<NUM_LEDS; i++){
+      pixels.setPixelColor(i, pixels.Color(LED_OFF, LED_ON*.5, LED_OFF));
+    }
     pixels.show();
+  }
 }
 
 void setGlobalBPM(float f){
@@ -599,14 +618,15 @@ void setGlobalBPM(float f){
 }
 
 void ledIndicateMeasure(int pMeasure){
-  
-  if(bQuantizeRestartWaiting){
-    pixels.setPixelColor(pMeasure, pixels.Color(LED_ON, LED_OFF, LED_ON));
-  }else{
-    pixels.clear();
-    pixels.setPixelColor(pMeasure, pixels.Color(LED_OFF, LED_OFF, LED_ON));
+  if(bIsPlaying){
+    if(bQuantizeRestartWaiting){
+      pixels.setPixelColor(pMeasure, pixels.Color(LED_ON, LED_OFF, LED_ON));
+    }else{
+      pixels.clear();
+      pixels.setPixelColor(pMeasure, pixels.Color(LED_OFF, LED_OFF, LED_ON));
+    }
+    pixels.show();
   }
-  pixels.show();
 }
 
 void ledGreen(){
