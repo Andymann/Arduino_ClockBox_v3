@@ -76,7 +76,7 @@ bool bNewPresetSelected = false;
 #define CLOCKMODE_MIXXX 2 
 
 // you can define whether clock-ticks ("0xF8") are sent continuously or only when the box is playing
-// First option might help syncing, e.g., Ableton and other products that adopt to midi clock rather slowly 
+// First option might improve syncing for, e.g., Ableton and other products that adopt to midi clock rather slowly 
 #define SENDCLOCK_ALWAYS 1
 #define SENDCLOCK_WHENPLAYING 2
 
