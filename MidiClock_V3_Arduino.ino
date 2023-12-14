@@ -211,10 +211,9 @@ void loop(){
         fBPM_Cache = fBPM_Sysex;
       }
       bNewBPM = true;
-      showBPM( fBPM_Cache );
       setGlobalBPM( fBPM_Cache );
     }
-    
+    showBPM( fBPM_Cache );
   }
 
   if(iNextPreset != NEXTPRESET_NONE){
