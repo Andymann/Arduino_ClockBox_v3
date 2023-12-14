@@ -511,8 +511,11 @@ byte stopButtonStateHandler() {
   return muxValue[2] == 0 ? false:true;
 }
 
+//Button or Footswitch
 byte preset1ButtonStateHandler() {
-  return muxValue[3] == 0 ? false : true;
+  bool b = muxValue[3]||muxValue[6];
+  //return muxValue[3] == 0 ? false : true;
+  return b == 0 ? false : true;
 }
 
 void preset1ClickHandler(Button2& btn) {
@@ -542,7 +545,8 @@ void preset3ChangeHandler( Button2& btn ){
 }
 
 byte preset2ButtonStateHandler() {
-  return muxValue[4] == 0 ? false:true;
+  bool b = muxValue[4]||muxValue[7];
+  return b == 0 ? false : true;
 }
 
 void preset2ClickHandler(Button2& btn) {
@@ -560,7 +564,8 @@ void preset2LongClickDetected(Button2& btn) {
 }
 
 byte preset3ButtonStateHandler() {
-  return muxValue[5] == 0 ? false:true;
+  bool b = muxValue[5]||muxValue[8];
+  return b == 0 ? false : true;
 }
 
 void preset3ClickHandler(Button2& btn) {
