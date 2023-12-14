@@ -1,4 +1,3 @@
-#include <SendOnlySoftwareSerial.h>
 #include <SoftwareSerial.h>
 
 #include <light_CD74HC4067.h>
