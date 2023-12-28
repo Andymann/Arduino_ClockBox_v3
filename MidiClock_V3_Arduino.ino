@@ -482,9 +482,9 @@ void restartHandler(Button2& btn){
     showBPM( fBPM_Cache );
     sendMidiStop();
     sendMidiStart();
-    if(iClockBehaviour == SENDCLOCK_WHENPLAYING){
+    //if(iClockBehaviour == SENDCLOCK_WHENPLAYING){
       uClock.start();
-    }
+    //}
     bIsPlaying = true;
   }
   
