@@ -16,7 +16,7 @@
 #define DISPLAY_I2C_ADDRESS 0x3C
 SSD1306AsciiWire oled;
 
-#define VERSION "3.10"
+#define VERSION "3.12"
 #define DEMUX_PIN A0
 
 CD74HC4067 mux(6,7,8,9);  // create a new CD74HC4067 object with its four select lines
@@ -479,16 +479,21 @@ void startHandler(Button2& btn) {
 
 void restartHandler(Button2& btn){
   if(iClockMode==CLOCKMODE_MIXXX){
-    bool b = muxValue[4]||muxValue[7];
-    if(b){
-      bNewBPM = true;
-      showBPM( fBPM_Cache );
-      sendMidiStop();
-      sendMidiStart();
-      //if(iClockBehaviour == SENDCLOCK_WHENPLAYING){
-        uClock.start();
-      //}
-      bIsPlaying = true;
+    //bool b = muxValue[4]||muxValue[7]; ;
+    if( btn.isPressed() ){
+      if(!bIsPlaying){
+        bNewBPM = true;
+        showBPM( fBPM_Cache );
+        sendMidiStop();
+        sendMidiStart();
+        //if(iClockBehaviour == SENDCLOCK_WHENPLAYING){
+          uClock.start();
+        //}
+        bIsPlaying = true;
+      }else{
+        stopPlaying();
+      }
+      
     }
   }
   
@@ -579,6 +584,11 @@ void preset2LongClickDetected(Button2& btn) {
     fBPM_Preset2 = tapTempo.getBPM();
     EEPROM.update(20, byte(fBPM_Preset2));
     ledRed();
+  }else if(iClockMode == CLOCKMODE_MIXXX){
+    //bool b = muxValue[5]||muxValue[8];
+    //if(btn.isPressed()){
+    //  stopPlaying();
+    //}
   }
 }
 
