@@ -135,7 +135,8 @@ void setup(){
   btnHelper_PRESET2.setLongClickTime( LONGCLICKTIMEMS );
   btnHelper_PRESET2.setClickHandler(preset2ClickHandler);
   btnHelper_PRESET2.setLongClickDetectedHandler(preset2LongClickDetected);
-  btnHelper_PRESET2.setTapHandler(restartHandler);
+  //btnHelper_PRESET2.setTapHandler(restartHandler);
+  btnHelper_PRESET2.setChangedHandler(restartHandler);
 
   btnHelper_PRESET3.begin(VIRTUAL_PIN, INPUT, false);
   btnHelper_PRESET3.setButtonStateFunction(preset3ButtonStateHandler);
@@ -478,14 +479,17 @@ void startHandler(Button2& btn) {
 
 void restartHandler(Button2& btn){
   if(iClockMode==CLOCKMODE_MIXXX){
-    bNewBPM = true;
-    showBPM( fBPM_Cache );
-    sendMidiStop();
-    sendMidiStart();
-    //if(iClockBehaviour == SENDCLOCK_WHENPLAYING){
-      uClock.start();
-    //}
-    bIsPlaying = true;
+    bool b = muxValue[4]||muxValue[7];
+    if(b){
+      bNewBPM = true;
+      showBPM( fBPM_Cache );
+      sendMidiStop();
+      sendMidiStart();
+      //if(iClockBehaviour == SENDCLOCK_WHENPLAYING){
+        uClock.start();
+      //}
+      bIsPlaying = true;
+    }
   }
   
 }
