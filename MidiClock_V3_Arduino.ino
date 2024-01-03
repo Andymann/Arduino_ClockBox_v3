@@ -71,7 +71,7 @@ bool bNudgeActive = false;
 String sActivePreset = "AAAAAAAAAAAAAA";
 bool bNewPresetSelected = false;
 
-#define CLOCKMODE_MASTER 1
+#define CLOCKMODE_STANDALONE 1
 #define CLOCKMODE_MIXXX 2 
 
 // you can define whether clock-ticks ("0xF8") are sent continuously or only when the box is playing
@@ -80,7 +80,7 @@ bool bNewPresetSelected = false;
 #define SENDCLOCK_WHENPLAYING 2
 
 uint8_t iClockBehaviour = SENDCLOCK_ALWAYS;
-uint8_t iClockMode = CLOCKMODE_MASTER;
+uint8_t iClockMode = CLOCKMODE_STANDALONE;
 
 byte muxValue[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; // The value of the Buttons as read from the multiplexer
 
@@ -171,7 +171,7 @@ void loop(){
   tapTempo.update(false);
 
   // ---- Nur ganzzahlige Werte darstellen, Rundungsfehler ueberdecken
-  if(iClockMode==CLOCKMODE_MASTER){
+  if(iClockMode==CLOCKMODE_STANDALONE){
     if( abs(tapTempo.getBPM() - fBPM_Cache) >= 1.0){
       bNewBPM = true;
       fBPM_Cache = uint8_t(tapTempo.getBPM());
@@ -205,7 +205,7 @@ void loop(){
 
   int iEncoder = queryEncoder();
   if(iEncoder!=0){
-    if(iClockMode==CLOCKMODE_MASTER){
+    if(iClockMode==CLOCKMODE_STANDALONE){
       if(muxValue[13]==0){
         fBPM_Cache += iEncoder;
       }else{
@@ -253,7 +253,7 @@ void updateStatusDisplay(){
   oled.setFont(ZevvPeep8x16);
   oled.set1X();
   oled.setRow(6);
-  if( iClockMode == CLOCKMODE_MASTER){
+  if( iClockMode == CLOCKMODE_STANDALONE){
     oled.setCol(105);
     oled.print("BPM");
   }else if( iClockMode == CLOCKMODE_MIXXX ){
@@ -543,13 +543,13 @@ byte preset1ButtonStateHandler() {
 }
 
 void preset1ClickHandler(Button2& btn) {
-  if(iClockMode == CLOCKMODE_MASTER){
+  if(iClockMode == CLOCKMODE_STANDALONE){
     iNextPreset = NEXTPRESET_1;
   }
 }
 
 void preset1LongClickDetected(Button2& btn) {
-    if(iClockMode == CLOCKMODE_MASTER){
+    if(iClockMode == CLOCKMODE_STANDALONE){
       fBPM_Preset1 = tapTempo.getBPM();
       EEPROM.update(10, byte(fBPM_Preset1));
       ledRed();
@@ -574,13 +574,13 @@ byte preset2ButtonStateHandler() {
 }
 
 void preset2ClickHandler(Button2& btn) {
-  if(iClockMode == CLOCKMODE_MASTER){
+  if(iClockMode == CLOCKMODE_STANDALONE){
     iNextPreset = NEXTPRESET_2;
   }
 }
 
 void preset2LongClickDetected(Button2& btn) {
-  if(iClockMode == CLOCKMODE_MASTER){
+  if(iClockMode == CLOCKMODE_STANDALONE){
     fBPM_Preset2 = tapTempo.getBPM();
     EEPROM.update(20, byte(fBPM_Preset2));
     ledRed();
@@ -598,13 +598,13 @@ byte preset3ButtonStateHandler() {
 }
 
 void preset3ClickHandler(Button2& btn) {
-  if(iClockMode == CLOCKMODE_MASTER){
+  if(iClockMode == CLOCKMODE_STANDALONE){
     iNextPreset = NEXTPRESET_3;
   }
 }
 
 void preset3LongClickDetected(Button2& btn) {
-  if(iClockMode == CLOCKMODE_MASTER){
+  if(iClockMode == CLOCKMODE_STANDALONE){
     fBPM_Preset3 = tapTempo.getBPM();
     EEPROM.update(30, byte(fBPM_Preset3));
     ledRed();
@@ -623,7 +623,7 @@ void ledIndicateStart(){
 
 void setGlobalBPM(float f){
   bNewBPM = true;
-  if(iClockMode==CLOCKMODE_MASTER){
+  if(iClockMode==CLOCKMODE_STANDALONE){
     tapTempo.setBPM( f );
   }
   uClock.setTempo( f );
@@ -738,7 +738,7 @@ void testDisplay(){
 
 void showBPM(float p){
   oled.setInvertMode( false );
-  if(iClockMode==CLOCKMODE_MASTER){
+  if(iClockMode==CLOCKMODE_STANDALONE){
     oled.setFont(Verdana_digits_24);
   }else if(iClockMode==CLOCKMODE_MIXXX){
 
