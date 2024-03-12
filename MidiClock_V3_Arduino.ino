@@ -1,3 +1,9 @@
+/*
+    uClock 1.5.1
+    button2 2.2.4
+*/
+
+
 #include <SoftwareSerial.h>
 
 #include <light_CD74HC4067.h>
@@ -23,7 +29,7 @@ CD74HC4067 mux(6,7,8,9);  // create a new CD74HC4067 object with its four select
 
 #define NUM_LEDS 4
 #define DATA_PIN 10
-#define LED_ON 10 //60
+#define LED_ON 59 //60
 #define LED_OFF 0
 Adafruit_NeoPixel pixels(NUM_LEDS, DATA_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -91,8 +97,9 @@ midiEventPacket_t midiPacket;
 
 
 void setup(){
+
   iNextPreset = NEXTPRESET_NONE;
-  Serial.begin(19200);
+  Serial.begin(115200);
   //delay(251);
   pixels.begin();
   ledInit();
@@ -157,9 +164,29 @@ void setup(){
   if(iClockBehaviour == SENDCLOCK_ALWAYS){
     uClock.start();
   }
+
+  Serial.println("init done");
+
+  
 }
 
 void loop(){
+
+
+
+ /*   
+  for(int i=0; i<16; i++){
+    //mux.channel(i);
+    bool val = digitalRead(DEMUX_PIN);
+     Serial.print(String(val) + " ");
+  }
+  Serial.println();
+  
+  return;
+*/
+
+
+
   readMux();
   btnHelper_TAP.loop();
   btnHelper_START.loop();
@@ -204,9 +231,11 @@ void loop(){
   
 
   int iEncoder = queryEncoder();
+
+
   if(iEncoder!=0){
     if(iClockMode==CLOCKMODE_STANDALONE){
-      if(muxValue[13]==0){
+      if(muxValue[12]==0){
         fBPM_Cache += iEncoder;
       }else{
         fBPM_Cache += iEncoder*5.0;
@@ -214,7 +243,7 @@ void loop(){
       bNewBPM = true;
       setGlobalBPM( fBPM_Cache);
     }else if(iClockMode==CLOCKMODE_MIXXX){
-      if(muxValue[13]==0){
+      if(muxValue[12]==0){
         fBPM_Sysex += iEncoder*0.01;
         fBPM_Cache = fBPM_Sysex;
       }else{
@@ -697,16 +726,16 @@ uint8_t encoder0PosOld = 128;
 // Returns -1 / +1
 int queryEncoder(){
   int iReturn = 0;
-  if ((encoder0PinALast == false) && (muxValue[14] == true)) {
-     if (muxValue[15] == false) {
+  if ((encoder0PinALast == false) && (muxValue[13] == true)) {
+     if (muxValue[14] == false) {
        encoder0Pos--;
      } else {
        encoder0Pos++;
      }
    } 
    
-   if ((encoder0PinALast == true) && (muxValue[14] == false)) {
-     if (muxValue[15] == true) {
+   if ((encoder0PinALast == true) && (muxValue[13] == false)) {
+     if (muxValue[14] == true) {
        encoder0Pos--;
      } else {
        encoder0Pos++;
@@ -723,7 +752,7 @@ int queryEncoder(){
      }
      encoder0PosOld = encoder0Pos;
    }
-   encoder0PinALast = muxValue[14];
+   encoder0PinALast = muxValue[13];
   return iReturn;
 }
 
