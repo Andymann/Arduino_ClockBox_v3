@@ -1,4 +1,8 @@
 /*
+    This code is for the handbuilt prototype (eurobox, printed sidepanels, etc)
+    It has slightly different pins used for the rotary encoder. 
+
+    It only works with these versions of the libraries since both have breaking changes in later versions
     uClock 1.5.1
     button2 2.2.4
 */
@@ -235,7 +239,7 @@ void loop(){
 
   if(iEncoder!=0){
     if(iClockMode==CLOCKMODE_STANDALONE){
-      if(muxValue[12]==0){
+      if(muxValue[13]==0){
         fBPM_Cache += iEncoder;
       }else{
         fBPM_Cache += iEncoder*5.0;
@@ -243,7 +247,7 @@ void loop(){
       bNewBPM = true;
       setGlobalBPM( fBPM_Cache);
     }else if(iClockMode==CLOCKMODE_MIXXX){
-      if(muxValue[12]==0){
+      if(muxValue[13]==0){
         fBPM_Sysex += iEncoder*0.01;
         fBPM_Cache = fBPM_Sysex;
       }else{
@@ -726,16 +730,16 @@ uint8_t encoder0PosOld = 128;
 // Returns -1 / +1
 int queryEncoder(){
   int iReturn = 0;
-  if ((encoder0PinALast == false) && (muxValue[13] == true)) {
-     if (muxValue[14] == false) {
+  if ((encoder0PinALast == false) && (muxValue[14] == true)) {
+     if (muxValue[15] == false) {
        encoder0Pos--;
      } else {
        encoder0Pos++;
      }
    } 
    
-   if ((encoder0PinALast == true) && (muxValue[13] == false)) {
-     if (muxValue[14] == true) {
+   if ((encoder0PinALast == true) && (muxValue[14] == false)) {
+     if (muxValue[15] == true) {
        encoder0Pos--;
      } else {
        encoder0Pos++;
@@ -752,7 +756,7 @@ int queryEncoder(){
      }
      encoder0PosOld = encoder0Pos;
    }
-   encoder0PinALast = muxValue[13];
+   encoder0PinALast = muxValue[14];
   return iReturn;
 }
 
