@@ -1,6 +1,11 @@
 /*
     uClock 1.5.1
     button2 2.2.4
+
+
+    ToDO: Documentation for incoming midiclock (in vua usb, out via ?)
+          #idefs for different hardware
+          #why uclock AND taptempo?
 */
 
 
