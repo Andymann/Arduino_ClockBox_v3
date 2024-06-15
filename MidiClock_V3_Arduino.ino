@@ -27,7 +27,7 @@
 #define DISPLAY_I2C_ADDRESS 0x3C
 SSD1306AsciiWire oled;
 
-#define VERSION "3.14"
+#define VERSION "3.15"
 #define DEMUX_PIN A0
 
 CD74HC4067 mux(6,7,8,9);  // create a new CD74HC4067 object with its four select lines
@@ -311,10 +311,10 @@ void loop(){
 
 }//
 
-// Standalone, mixxx, follow ...
+// Standalone, mixxx, follow ...if(muxValue[ENCODERCLICK]==
 
 void checkForModeSwitch(){
-  if(muxValue[STOPBUTTON] && muxValue[STARTBUTTON]){
+  if(muxValue[ENCODERCLICK] && muxValue[STARTBUTTON]){
     if( !bModeSwitched ){
       bModeSwitched = true;
       
@@ -330,10 +330,10 @@ void checkForModeSwitch(){
       //bModeSwitched = false;
     }
   }
-  if((muxValue[STOPBUTTON] == 0) && (muxValue[STARTBUTTON] == 0)){
-    if(bModeSwitched==true){
-      stopPlaying();
-    }
+  if((muxValue[ENCODERCLICK] == 0) && (muxValue[STARTBUTTON] == 0)){
+    //if(bModeSwitched==true){
+    //  stopPlaying();
+    //}
     bModeSwitched = false;
     
   }
@@ -621,6 +621,7 @@ void handle_bpm_led(uint32_t tick)
   if( (tick % (96) == (QUANTIZERESTARTOFFSET) )){
     if( bQuantizeRestartWaiting == true){
       bQuantizeRestartWaiting = false;
+      //sendMidiStop();
       sendMidiStart();
     }
   }
@@ -665,7 +666,7 @@ byte tapButtonStateHandler() {
 
 
 void startHandler(Button2& btn) {
-  if( !muxValue[STOPBUTTON] ){
+  if( !muxValue[ENCODERCLICK] ){
     startPlaying();
   }
 }
@@ -677,7 +678,7 @@ void restartHandler(Button2& btn){
       if(!bIsPlaying){
         bNewBPM = true;
         showBPM( fBPM_Cache );
-        sendMidiStop();
+        //sendMidiStop();
         sendMidiStart();
         //if(iClockBehaviour == SENDCLOCK_WHENPLAYING){
           uClock.start();
