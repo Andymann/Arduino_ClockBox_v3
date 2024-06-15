@@ -3,7 +3,7 @@
     button2 2.2.4
 
 
-    ToDO: Documentation for incoming midiclock (in vua usb, out via ?)
+    ToDO: Documentation for incoming midiclock (in via usb, out via ?)
           #idefs for different hardware
           #why uclock AND taptempo?
 */
@@ -27,7 +27,7 @@
 #define DISPLAY_I2C_ADDRESS 0x3C
 SSD1306AsciiWire oled;
 
-#define VERSION "3.16"
+#define VERSION "3.16a"
 #define DEMUX_PIN A0
 
 CD74HC4067 mux(6,7,8,9);  // create a new CD74HC4067 object with its four select lines
@@ -352,18 +352,18 @@ void updateStatusDisplay(){
     oled.setCol(1);
     oled.setInvertMode( false );
     oled.print("QRS Start");
-    oled.setCol(105);
+    oled.setCol(112);
     oled.setInvertMode( bDisplayInverted );
     oled.setRow(0);
-    oled.print("BPM");
+    oled.print("  ");
   }else if(iClockMode==CLOCKMODE_STANDALONE_B){
     oled.setCol(1);
     oled.setInvertMode( false );
     oled.print("QRS Stop-Start");
-    oled.setCol(105);
+    oled.setCol(112);
     oled.setInvertMode( bDisplayInverted );
     oled.setRow(0);
-    oled.print("BPM");
+    oled.print("  ");
   }else if( iClockMode == CLOCKMODE_MIXXX ){
     oled.setCol(88);
     oled.print("SYSEX");
