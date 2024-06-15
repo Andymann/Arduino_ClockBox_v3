@@ -27,7 +27,7 @@
 #define DISPLAY_I2C_ADDRESS 0x3C
 SSD1306AsciiWire oled;
 
-#define VERSION "3.15"
+#define VERSION "3.16"
 #define DEMUX_PIN A0
 
 CD74HC4067 mux(6,7,8,9);  // create a new CD74HC4067 object with its four select lines
@@ -95,8 +95,8 @@ bool bNewPresetSelected = false;
 #define ENCODERPINA 14
 #define ENCODERPINB 15
 
-#define CLOCKMODE_STANDALONE_A 1
-#define CLOCKMODE_STANDALONE_B 2
+#define CLOCKMODE_STANDALONE_A 1  // Send Midi-Start on quantized restart
+#define CLOCKMODE_STANDALONE_B 2  // Send Midi Stop-Start on quantized restart
 #define CLOCKMODE_MIXXX 3 
 #define CLOCKMODE_FOLLOW_24PPQN 4
 #define CLOCKMODE_FOLLOW_48PPQN 5
@@ -186,6 +186,7 @@ void setup(){
   
  
   getPresetsFromEeprom();
+  iClockMode = getModeFromEeprom();
   showInfo(1500);
   ledOff();
 
@@ -324,6 +325,7 @@ void checkForModeSwitch(){
           iClockMode = arrModes[(i+1)%MODECOUNT];
           iTickCounter=0;
           oled.clear();
+          EEPROM.update(40, byte(iClockMode));
           break;
         }
       }
@@ -913,6 +915,16 @@ void getPresetsFromEeprom(){
   val = EEPROM.read(30);
   if(val!=255){
     fBPM_Preset3 = val;
+  }
+}
+
+uint8_t getModeFromEeprom(){
+  uint8_t val;
+  val = EEPROM.read(40);
+  if(val!=255){ // a.k.a. hier wurde schonmal etwas gespeichert
+    return val;
+  }else{
+    return CLOCKMODE_STANDALONE_A;
   }
 }
 
