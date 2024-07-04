@@ -1,6 +1,10 @@
 /*
     uClock 1.5.1
     button2 2.2.4
+
+
+    ToDO: Documentation for incoming midiclock (in via usb, out via ?)
+          #why uclock AND taptempo?
 */
 
 
@@ -8,21 +12,58 @@
 
 #include <light_CD74HC4067.h>
 #include "TapTempo.h" // Note the quotation marks. Because it's in the same folder as the code itself. Get it, e.g. from https://github.com/Andymann/ArduinoTapTempo
-#include <uClock.h>
-#include <Button2.h>
+#include <uClock.h> // FORCE 1.5.1
+#include <Button2.h> // FORCE 2.2.4
 #include <Adafruit_NeoPixel.h>
 #include "MIDIUSB.h"
 #include <EEPROM.h>
-
 #include <Wire.h>
 #include "SSD1306Ascii.h"
 #include "SSD1306AsciiWire.h"
+
+
+/*
+    SELECT WHICH HARDWARE WILL BE USED
+*/
+//#define V3_PROTOBOARD 0
+#define V3_PCB 0
+
+#ifdef V3_PROTOBOARD
+#define TAPBUTTON 0
+#define STARTBUTTON 1
+#define STOPBUTTON 2
+#define PRESETBUTTON1 3
+#define PRESETBUTTON2 4
+#define PRESETBUTTON3 5
+#define PRESETSWITCH1 6
+#define PRESETSWITCH2 7
+#define PRESETSWITCH3 8
+#define ENCODERCLICK 13
+#define ENCODERPINA 14
+#define ENCODERPINB 15
+#endif
+
+#ifdef V3_PCB
+#define TAPBUTTON 0
+#define STARTBUTTON 1
+#define STOPBUTTON 2
+#define PRESETBUTTON1 3
+#define PRESETBUTTON2 4
+#define PRESETBUTTON3 5
+#define PRESETSWITCH1 6
+#define PRESETSWITCH2 7
+#define PRESETSWITCH3 8
+#define ENCODERCLICK 12//13
+#define ENCODERPINA 13//14
+#define ENCODERPINB 14//15
+#endif
+
 
 // 0X3C+SA0 - 0x3C or 0x3D
 #define DISPLAY_I2C_ADDRESS 0x3C
 SSD1306AsciiWire oled;
 
-#define VERSION "3.14"
+#define VERSION "3.16c"
 #define DEMUX_PIN A0
 
 CD74HC4067 mux(6,7,8,9);  // create a new CD74HC4067 object with its four select lines
@@ -77,27 +118,17 @@ bool bNudgeActive = false;
 String sActivePreset = "AAAAAAAAAAAAAA";
 bool bNewPresetSelected = false;
 
-#define TAPBUTTON 0
-#define STARTBUTTON 1
-#define STOPBUTTON 2
-#define PRESETBUTTON1 3
-#define PRESETBUTTON2 4
-#define PRESETBUTTON3 5
-#define PRESETSWITCH1 6
-#define PRESETSWITCH2 7
-#define PRESETSWITCH3 8
-#define ENCODERCLICK 13
-#define ENCODERPINA 14
-#define ENCODERPINB 15
 
-#define CLOCKMODE_STANDALONE 1
-#define CLOCKMODE_MIXXX 2 
-#define CLOCKMODE_FOLLOW_24PPQN 3
-#define CLOCKMODE_FOLLOW_48PPQN 4
-#define CLOCKMODE_FOLLOW_72PPQN 5
-#define CLOCKMODE_FOLLOW_96PPQN 6
+
+#define CLOCKMODE_STANDALONE_A 1  // Send Midi-Start on quantized restart
+#define CLOCKMODE_STANDALONE_B 2  // Send Midi Stop-Start on quantized restart
+#define CLOCKMODE_MIXXX 3 
+#define CLOCKMODE_FOLLOW_24PPQN 4
+#define CLOCKMODE_FOLLOW_48PPQN 5
+#define CLOCKMODE_FOLLOW_72PPQN 6
+#define CLOCKMODE_FOLLOW_96PPQN 7
 #define MODECOUNT 6
-uint8_t arrModes[] = {CLOCKMODE_STANDALONE, CLOCKMODE_MIXXX, CLOCKMODE_FOLLOW_24PPQN, CLOCKMODE_FOLLOW_48PPQN, CLOCKMODE_FOLLOW_72PPQN, CLOCKMODE_FOLLOW_96PPQN};
+uint8_t arrModes[] = {CLOCKMODE_STANDALONE_A, CLOCKMODE_STANDALONE_B, CLOCKMODE_FOLLOW_24PPQN, CLOCKMODE_FOLLOW_48PPQN, CLOCKMODE_FOLLOW_72PPQN, CLOCKMODE_FOLLOW_96PPQN, CLOCKMODE_MIXXX};
 
 // you can define whether clock-ticks ("0xF8") are sent continuously or only when the box is playing
 // First option might improve syncing for, e.g., Ableton and other products that adopt to midi clock rather slowly 
@@ -105,7 +136,7 @@ uint8_t arrModes[] = {CLOCKMODE_STANDALONE, CLOCKMODE_MIXXX, CLOCKMODE_FOLLOW_24
 #define SENDCLOCK_WHENPLAYING 2
 
 uint8_t iClockBehaviour = SENDCLOCK_ALWAYS;
-uint8_t iClockMode = CLOCKMODE_STANDALONE;
+uint8_t iClockMode = CLOCKMODE_STANDALONE_A;
 //uint8_t iClockMode = CLOCKMODE_FOLLOW;
 
 byte muxValue[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; // The value of the Buttons as read from the multiplexer
@@ -180,6 +211,7 @@ void setup(){
   
  
   getPresetsFromEeprom();
+  iClockMode = getModeFromEeprom();
   showInfo(1500);
   ledOff();
 
@@ -205,7 +237,7 @@ void loop(){
 
   tapTempo.update(false);
 
-  if(iClockMode==CLOCKMODE_STANDALONE){
+  if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B)){
     if( abs(tapTempo.getBPM() - fBPM_Cache) >= 1.0){
       bNewBPM = true;
       fBPM_Cache = uint8_t(tapTempo.getBPM());   // Nur ganzzahlige Werte darstellen, Rundungsfehler ueberdecken
@@ -256,7 +288,7 @@ void loop(){
 
 
   if(iEncoder!=0){
-    if(iClockMode==CLOCKMODE_STANDALONE){
+    if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B)){
       if(muxValue[ENCODERCLICK]==0){
         fBPM_Cache += iEncoder;
       }else{
@@ -306,10 +338,10 @@ void loop(){
 
 }//
 
-// Standalone, mixxx, follow ...
+// Standalone, mixxx, follow ...if(muxValue[ENCODERCLICK]==
 
 void checkForModeSwitch(){
-  if(muxValue[STOPBUTTON] && muxValue[STARTBUTTON]){
+  if(muxValue[ENCODERCLICK] && muxValue[STARTBUTTON]){
     if( !bModeSwitched ){
       bModeSwitched = true;
       
@@ -318,6 +350,7 @@ void checkForModeSwitch(){
           iClockMode = arrModes[(i+1)%MODECOUNT];
           iTickCounter=0;
           oled.clear();
+          EEPROM.update(40, byte(iClockMode));
           break;
         }
       }
@@ -325,10 +358,10 @@ void checkForModeSwitch(){
       //bModeSwitched = false;
     }
   }
-  if((muxValue[STOPBUTTON] == 0) && (muxValue[STARTBUTTON] == 0)){
-    if(bModeSwitched==true){
-      stopPlaying();
-    }
+  if((muxValue[ENCODERCLICK] == 0) && (muxValue[STARTBUTTON] == 0)){
+    //if(bModeSwitched==true){
+    //  stopPlaying();
+    //}
     bModeSwitched = false;
     
   }
@@ -340,9 +373,22 @@ void updateStatusDisplay(){
   oled.setFont(ZevvPeep8x16);
   oled.set1X();
   oled.setRow(6);
-  if( iClockMode == CLOCKMODE_STANDALONE){
-    oled.setCol(105);
-    oled.print("BPM");
+  if(iClockMode==CLOCKMODE_STANDALONE_A){
+    oled.setCol(1);
+    oled.setInvertMode( false );
+    oled.print("QRS Start");
+    oled.setCol(112);
+    oled.setInvertMode( bDisplayInverted );
+    oled.setRow(0);
+    oled.print("  ");
+  }else if(iClockMode==CLOCKMODE_STANDALONE_B){
+    oled.setCol(1);
+    oled.setInvertMode( false );
+    oled.print("QRS Stop-Start");
+    oled.setCol(112);
+    oled.setInvertMode( bDisplayInverted );
+    oled.setRow(0);
+    oled.print("  ");
   }else if( iClockMode == CLOCKMODE_MIXXX ){
     oled.setCol(88);
     oled.print("SYSEX");
@@ -562,7 +608,7 @@ void processIncomingClock(){
 }
 
 void sendMidiClock(){
-  if(iClockMode==CLOCKMODE_STANDALONE){
+  if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B)){
      midiEventPacket_t p = {0x0F, MIDI_CLOCK, 0, 0};
     MidiUSB.sendMIDI(p);
     MidiUSB.flush();
@@ -579,7 +625,7 @@ void sendMidiClock(){
 }
 
 void sendMidiStart(){
-  if(iClockMode==CLOCKMODE_STANDALONE){
+  if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B)){
     midiEventPacket_t p = {0x0F, MIDI_START, 0, 0};
     MidiUSB.sendMIDI(p);
     MidiUSB.flush();
@@ -595,7 +641,7 @@ void sendMidiStart(){
 }
 
 void sendMidiStop(){
-  if(iClockMode==CLOCKMODE_STANDALONE){
+  if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B)){
     midiEventPacket_t p = {0x0F, MIDI_STOP, 0, 0};
     MidiUSB.sendMIDI(p);
     MidiUSB.flush();
@@ -616,6 +662,9 @@ void handle_bpm_led(uint32_t tick)
   if( (tick % (96) == (QUANTIZERESTARTOFFSET) )){
     if( bQuantizeRestartWaiting == true){
       bQuantizeRestartWaiting = false;
+      if(iClockMode==CLOCKMODE_STANDALONE_B){
+        sendMidiStop();
+      }
       sendMidiStart();
     }
   }
@@ -649,7 +698,7 @@ void handle_bpm_led(uint32_t tick)
 
 void tapHandler(Button2& btn) {
     //Serial.println("tap Handler");
-    //if((iClockMode==CLOCKMODE_STANDALONE)||(iClockMode==CLOCKMODE_MIXXX)){
+    //if((iClockMode==CLOCKMODE_STANDALONE_A)||(iClockMode==CLOCKMODE_MIXXX)){
       tapTempo.update(true);
     //}
 }
@@ -660,7 +709,7 @@ byte tapButtonStateHandler() {
 
 
 void startHandler(Button2& btn) {
-  if( !muxValue[STOPBUTTON] ){
+  if( !muxValue[ENCODERCLICK] ){
     startPlaying();
   }
 }
@@ -672,7 +721,7 @@ void restartHandler(Button2& btn){
       if(!bIsPlaying){
         bNewBPM = true;
         showBPM( fBPM_Cache );
-        sendMidiStop();
+        //sendMidiStop();
         sendMidiStart();
         //if(iClockBehaviour == SENDCLOCK_WHENPLAYING){
           uClock.start();
@@ -735,13 +784,13 @@ byte preset1ButtonStateHandler() {
 }
 
 void preset1ClickHandler(Button2& btn) {
-  if(iClockMode == CLOCKMODE_STANDALONE){
+  if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B)){
     iNextPreset = NEXTPRESET_1;
   }
 }
 
 void preset1LongClickDetected(Button2& btn) {
-    if(iClockMode == CLOCKMODE_STANDALONE){
+    if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B)){
       fBPM_Preset1 = tapTempo.getBPM();
       EEPROM.update(10, byte(fBPM_Preset1));
       ledRed();
@@ -775,13 +824,13 @@ byte preset2ButtonStateHandler() {
 }
 
 void preset2ClickHandler(Button2& btn) {
-  if(iClockMode == CLOCKMODE_STANDALONE){
+  if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B)){
     iNextPreset = NEXTPRESET_2;
   }
 }
 
 void preset2LongClickDetected(Button2& btn) {
-  if(iClockMode == CLOCKMODE_STANDALONE){
+  if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B)){
     fBPM_Preset2 = tapTempo.getBPM();
     EEPROM.update(20, byte(fBPM_Preset2));
     ledRed();
@@ -799,13 +848,13 @@ byte preset3ButtonStateHandler() {
 }
 
 void preset3ClickHandler(Button2& btn) {
-  if(iClockMode == CLOCKMODE_STANDALONE){
+  if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B)){
     iNextPreset = NEXTPRESET_3;
   }
 }
 
 void preset3LongClickDetected(Button2& btn) {
-  if(iClockMode == CLOCKMODE_STANDALONE){
+  if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B)){
     fBPM_Preset3 = tapTempo.getBPM();
     EEPROM.update(30, byte(fBPM_Preset3));
     ledRed();
@@ -825,7 +874,7 @@ void ledIndicateStart(){
 void setGlobalBPM(float f){
   //Serial.println("setGlobalBPM " + String(f));
   bNewBPM = true;
-  if(iClockMode==CLOCKMODE_STANDALONE){
+  if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B)){
     tapTempo.setBPM( f );
   }else if(iClockMode==CLOCKMODE_MIXXX){
     
@@ -894,6 +943,16 @@ void getPresetsFromEeprom(){
   }
 }
 
+uint8_t getModeFromEeprom(){
+  uint8_t val;
+  val = EEPROM.read(40);
+  if(val!=255){ // a.k.a. hier wurde schonmal etwas gespeichert
+    return val;
+  }else{
+    return CLOCKMODE_STANDALONE_A;
+  }
+}
+
 bool encoder0PinALast = false;
 bool encoder0PinBLast = false;
 uint8_t encoder0Pos = 128;
@@ -943,11 +1002,8 @@ void testDisplay(){
 
 void showBPM(float p){
   oled.setInvertMode( false );
-  if(iClockMode==CLOCKMODE_STANDALONE){
+  if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B)){
     oled.setFont(Verdana_digits_24);
-  }
-  if(iClockMode==CLOCKMODE_STANDALONE){
-    
   }else if(iClockMode==CLOCKMODE_MIXXX){
 
   }
