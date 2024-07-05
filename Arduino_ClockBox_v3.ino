@@ -25,8 +25,8 @@
 /*
     SELECT WHICH HARDWARE WILL BE USED
 */
-//#define V3_PROTOBOARD 0
-#define V3_PCB 0
+#define V3_PROTOBOARD 0
+//#define V3_PCB 0
 
 #ifdef V3_PROTOBOARD
 #define TAPBUTTON 0
@@ -63,7 +63,7 @@
 #define DISPLAY_I2C_ADDRESS 0x3C
 SSD1306AsciiWire oled;
 
-#define VERSION "3.16c"
+#define VERSION "3.17a"
 #define DEMUX_PIN A0
 
 CD74HC4067 mux(6,7,8,9);  // create a new CD74HC4067 object with its four select lines
@@ -244,7 +244,7 @@ void loop(){
       //uClock.setTempo( fBPM_Cache );
       setGlobalBPM(fBPM_Cache);
       if(bIsPlaying){
-        showBPM( fBPM_Cache );
+//        showBPM( fBPM_Cache );
       }else{
         showStatus( 0, false );
       }
@@ -255,13 +255,13 @@ void loop(){
         fBPM_Cache = fBPM_Sysex;
         setGlobalBPM(fBPM_Sysex);
         if(bIsPlaying){
-          showBPM( fBPM_Sysex );
+//          showBPM( fBPM_Sysex );
         }else{
           showStatus( 0, false );
         }
       }else{
         if(bIsPlaying){
-          showBPM( fBPM_Cache );
+//          showBPM( fBPM_Cache );
         }else{
           showStatus( 0, false );
         }
@@ -276,7 +276,7 @@ void loop(){
         fBPM_Cache = (tapTempo.getBPM());
         uClock.setTempo( fBPM_Cache );
         if(bIsPlaying){
-          showBPM( fBPM_Cache );
+//          showBPM( fBPM_Cache );
         }else{
           showStatus( 0, false );
         }
@@ -315,7 +315,7 @@ void loop(){
       bNewBPM = true;
       setGlobalBPM( fBPM_Cache);
     }
-    showBPM( fBPM_Cache );
+//    showBPM( fBPM_Cache );
   }
 
   if(iNextPreset != NEXTPRESET_NONE){
@@ -336,6 +336,7 @@ void loop(){
   checkMidiUSB();
   checkMidiDIN();
 
+//  showBPM( fBPM_Cache );
 }//
 
 // Standalone, mixxx, follow ...if(muxValue[ENCODERCLICK]==
@@ -524,7 +525,7 @@ void selectPreset(uint8_t pPresetID){
     bNewBPM = true;
     displayPresetName("Preset 3");
   }
-  showBPM( fBPM_Cache );
+//  showBPM( fBPM_Cache );
   if(!bIsPlaying){
     startPlaying();
   }
@@ -720,7 +721,7 @@ void restartHandler(Button2& btn){
     if( btn.isPressed() ){
       if(!bIsPlaying){
         bNewBPM = true;
-        showBPM( fBPM_Cache );
+//        showBPM( fBPM_Cache );
         //sendMidiStop();
         sendMidiStart();
         //if(iClockBehaviour == SENDCLOCK_WHENPLAYING){
@@ -739,7 +740,7 @@ void restartHandler(Button2& btn){
 void startPlaying(){
   if((!bIsPlaying) && (!bModeSwitched)){
     bNewBPM = true;
-    showBPM( fBPM_Cache );
+//    showBPM( fBPM_Cache );
     sendMidiStart();
     uClock.start(); //if already running this causes a clock reset (-> LED handling, tick,)
   }else{
