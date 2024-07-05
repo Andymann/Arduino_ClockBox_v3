@@ -53,17 +53,23 @@
 #define PRESETSWITCH1 6
 #define PRESETSWITCH2 7
 #define PRESETSWITCH3 8
-#define ENCODERCLICK 12//13
-#define ENCODERPINA 13//14
-#define ENCODERPINB 14//15
+#define ENCODERCLICK 12
+#define ENCODERPINA 13
+#define ENCODERPINB 14
 #endif
 
+
+#define MEMLOC_PRESET_1 10
+#define MEMLOC_PRESET_2 20
+#define MEMLOC_PRESET_3 30
+#define MEMLOC_MODE 40
+#define MEMLOC_QRSOFFSET 50
 
 // 0X3C+SA0 - 0x3C or 0x3D
 #define DISPLAY_I2C_ADDRESS 0x3C
 SSD1306AsciiWire oled;
 
-#define VERSION "3.17a"
+#define VERSION "3.17b"
 #define DEMUX_PIN A0
 
 CD74HC4067 mux(6,7,8,9);  // create a new CD74HC4067 object with its four select lines
@@ -79,7 +85,7 @@ Adafruit_NeoPixel pixels(NUM_LEDS, DATA_PIN, NEO_GRB + NEO_KHZ800);
 #define MIDI_STOP  0xFC
 
 
-#define QUANTIZERESTARTOFFSET 94 // Damit ein restart echt mega genau ankommt; test per Ableton Metronom
+uint8_t iQuantizeRestartOffset; // Damit ein restart echt mega genau ankommt; test per Ableton Metronom: 94 sweet spot. 
 #define LONGCLICKTIMEMS 2000
 
 #define NEXTPRESET_NONE 0
@@ -148,11 +154,12 @@ midiEventPacket_t midiPacket;
 
 int iTickCounter=0;
 boolean bModeSwitched = false;
+boolean bQRSChange = false;
 
 void setup(){
 
   iNextPreset = NEXTPRESET_NONE;
-  Serial.begin(115200);
+  //Serial.begin(115200);
   //delay(251);
   pixels.begin();
   ledInit();
@@ -212,6 +219,9 @@ void setup(){
  
   getPresetsFromEeprom();
   iClockMode = getModeFromEeprom();
+  iQuantizeRestartOffset = getQRSOffsetFromEeprom();
+
+
   showInfo(1500);
   ledOff();
 
@@ -288,34 +298,41 @@ void loop(){
 
 
   if(iEncoder!=0){
-    if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B)){
-      if(muxValue[ENCODERCLICK]==0){
-        fBPM_Cache += iEncoder;
-      }else{
-        fBPM_Cache += iEncoder*5.0;
+    if( !bQRSChange ){
+      if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B)){
+        if(muxValue[ENCODERCLICK]==0){
+          fBPM_Cache += iEncoder;
+        }else{
+          fBPM_Cache += iEncoder*5.0;
+        }
+        bNewBPM = true;
+        setGlobalBPM( fBPM_Cache);
+      }else if(iClockMode==CLOCKMODE_MIXXX){
+        if(muxValue[ENCODERCLICK]==0){
+          fBPM_Sysex += iEncoder*1.;
+          fBPM_Cache = fBPM_Sysex;
+        }else{
+          fBPM_Sysex += iEncoder*0.1;
+          fBPM_Cache = fBPM_Sysex;
+        }
+        bNewBPM = true;
+        setGlobalBPM( fBPM_Cache );
+      }else if(iClockMode==CLOCKMODE_FOLLOW_24PPQN || CLOCKMODE_FOLLOW_48PPQN || CLOCKMODE_FOLLOW_72PPQN || CLOCKMODE_FOLLOW_96PPQN){
+        if(muxValue[ENCODERCLICK]==0){
+          fBPM_Cache += iEncoder;
+        }else{
+          fBPM_Cache += iEncoder*.10;
+        }
+        bNewBPM = true;
+        setGlobalBPM( fBPM_Cache);
       }
-      bNewBPM = true;
-      setGlobalBPM( fBPM_Cache);
-    }else if(iClockMode==CLOCKMODE_MIXXX){
-      if(muxValue[ENCODERCLICK]==0){
-        fBPM_Sysex += iEncoder*1.;
-        fBPM_Cache = fBPM_Sysex;
-      }else{
-        fBPM_Sysex += iEncoder*0.1;
-        fBPM_Cache = fBPM_Sysex;
+    }else{
+      // bQRSChange = true
+      if( (iQuantizeRestartOffset>2) && (iQuantizeRestartOffset<253) ){
+        iQuantizeRestartOffset += iEncoder;
       }
-      bNewBPM = true;
-      setGlobalBPM( fBPM_Cache );
-    }else if(iClockMode==CLOCKMODE_FOLLOW_24PPQN || CLOCKMODE_FOLLOW_48PPQN || CLOCKMODE_FOLLOW_72PPQN || CLOCKMODE_FOLLOW_96PPQN){
-      if(muxValue[ENCODERCLICK]==0){
-        fBPM_Cache += iEncoder;
-      }else{
-        fBPM_Cache += iEncoder*.10;
-      }
-      bNewBPM = true;
-      setGlobalBPM( fBPM_Cache);
     }
-//    showBPM( fBPM_Cache );
+    
   }
 
   if(iNextPreset != NEXTPRESET_NONE){
@@ -336,7 +353,6 @@ void loop(){
   checkMidiUSB();
   checkMidiDIN();
 
-//  showBPM( fBPM_Cache );
 }//
 
 // Standalone, mixxx, follow ...if(muxValue[ENCODERCLICK]==
@@ -351,7 +367,7 @@ void checkForModeSwitch(){
           iClockMode = arrModes[(i+1)%MODECOUNT];
           iTickCounter=0;
           oled.clear();
-          EEPROM.update(40, byte(iClockMode));
+          EEPROM.update(MEMLOC_MODE, byte(iClockMode));
           break;
         }
       }
@@ -360,52 +376,81 @@ void checkForModeSwitch(){
     }
   }
   if((muxValue[ENCODERCLICK] == 0) && (muxValue[STARTBUTTON] == 0)){
-    //if(bModeSwitched==true){
-    //  stopPlaying();
-    //}
     bModeSwitched = false;
+  }
+
+  if(muxValue[ENCODERCLICK] && muxValue[STOPBUTTON]){
+    if( !bQRSChange ){
+      bQRSChange = true;
+    }
+  }
+  if((muxValue[ENCODERCLICK] == 0) && (muxValue[STOPBUTTON] == 0)){
+    if( bQRSChange == true){
+      oled.clear(); // Artefakte loeschen
+      EEPROM.update(MEMLOC_QRSOFFSET, byte(iQuantizeRestartOffset));
+    }
+    bQRSChange = false;
     
   }
+
 }
 
 void updateStatusDisplay(){
-  showBPM(fBPM_Cache);
-  oled.setInvertMode( bDisplayInverted );
-  oled.setFont(ZevvPeep8x16);
-  oled.set1X();
-  oled.setRow(6);
-  if(iClockMode==CLOCKMODE_STANDALONE_A){
-    oled.setCol(1);
-    oled.setInvertMode( false );
-    oled.print("QRS Start");
-    oled.setCol(112);
+  if( !bQRSChange ){
+    showBPM(fBPM_Cache);
     oled.setInvertMode( bDisplayInverted );
-    oled.setRow(0);
-    oled.print("  ");
-  }else if(iClockMode==CLOCKMODE_STANDALONE_B){
-    oled.setCol(1);
+    oled.setFont(ZevvPeep8x16);
+    oled.set1X();
+    oled.setRow(6);
+    if(iClockMode==CLOCKMODE_STANDALONE_A){
+      oled.setCol(1);
+      oled.setInvertMode( false );
+      oled.print("QRS Start");
+      oled.setCol(112);
+      oled.setInvertMode( bDisplayInverted );
+      oled.setRow(0);
+      oled.print("  ");
+    }else if(iClockMode==CLOCKMODE_STANDALONE_B){
+      oled.setCol(1);
+      oled.setInvertMode( false );
+      oled.print("QRS Stop-Start");
+      oled.setCol(112);
+      oled.setInvertMode( bDisplayInverted );
+      oled.setRow(0);
+      oled.print("  ");
+    }else if( iClockMode == CLOCKMODE_MIXXX ){
+      oled.setCol(88);
+      oled.print("SYSEX");
+    }else if( iClockMode == CLOCKMODE_FOLLOW_24PPQN ){
+      oled.setCol(32);
+      oled.print("ext.Clock 24");
+    }else if( iClockMode == CLOCKMODE_FOLLOW_48PPQN ){
+      oled.setCol(32);
+      oled.print("ext.Clock 48");
+    }else if( iClockMode == CLOCKMODE_FOLLOW_72PPQN ){
+      oled.setCol(32);
+      oled.print("ext.Clock 72");
+    }else if( iClockMode == CLOCKMODE_FOLLOW_96PPQN ){
+      oled.setCol(32);
+      oled.print("ext.Clock 96");
+    }
+  }else{
+    // bQRSChange = true
+    oled.clear();
     oled.setInvertMode( false );
-    oled.print("QRS Stop-Start");
-    oled.setCol(112);
-    oled.setInvertMode( bDisplayInverted );
+    oled.set1X();
     oled.setRow(0);
-    oled.print("  ");
-  }else if( iClockMode == CLOCKMODE_MIXXX ){
-    oled.setCol(88);
-    oled.print("SYSEX");
-  }else if( iClockMode == CLOCKMODE_FOLLOW_24PPQN ){
-    oled.setCol(32);
-    oled.print("ext.Clock 24");
-  }else if( iClockMode == CLOCKMODE_FOLLOW_48PPQN ){
-    oled.setCol(32);
-    oled.print("ext.Clock 48");
-  }else if( iClockMode == CLOCKMODE_FOLLOW_72PPQN ){
-    oled.setCol(32);
-    oled.print("ext.Clock 72");
-  }else if( iClockMode == CLOCKMODE_FOLLOW_96PPQN ){
-    oled.setCol(32);
-    oled.print("ext.Clock 96");
+    oled.print( "QRS Offset:");
+    oled.setRow(3);
+    oled.set2X();
+    if(iQuantizeRestartOffset<100){
+      oled.setCol(30);
+    }else{
+      oled.setCol(15);
+    }
+    oled.print( String(iQuantizeRestartOffset) );
   }
+  
 }
 
 void displaySelectedPreset(String p){
@@ -660,7 +705,7 @@ void sendMidiStop(){
 void handle_bpm_led(uint32_t tick)
 {
   // BPM led indicator
-  if( (tick % (96) == (QUANTIZERESTARTOFFSET) )){
+  if( (tick % (96) == (iQuantizeRestartOffset) )){
     if( bQuantizeRestartWaiting == true){
       bQuantizeRestartWaiting = false;
       if(iClockMode==CLOCKMODE_STANDALONE_B){
@@ -793,7 +838,7 @@ void preset1ClickHandler(Button2& btn) {
 void preset1LongClickDetected(Button2& btn) {
     if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B)){
       fBPM_Preset1 = tapTempo.getBPM();
-      EEPROM.update(10, byte(fBPM_Preset1));
+      EEPROM.update(MEMLOC_PRESET_1, byte(fBPM_Preset1));
       ledRed();
     }
 }
@@ -833,7 +878,7 @@ void preset2ClickHandler(Button2& btn) {
 void preset2LongClickDetected(Button2& btn) {
   if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B)){
     fBPM_Preset2 = tapTempo.getBPM();
-    EEPROM.update(20, byte(fBPM_Preset2));
+    EEPROM.update(MEMLOC_PRESET_2, byte(fBPM_Preset2));
     ledRed();
   }else if(iClockMode == CLOCKMODE_MIXXX){
     //bool b = muxValue[5]||muxValue[8];
@@ -857,7 +902,7 @@ void preset3ClickHandler(Button2& btn) {
 void preset3LongClickDetected(Button2& btn) {
   if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B)){
     fBPM_Preset3 = tapTempo.getBPM();
-    EEPROM.update(30, byte(fBPM_Preset3));
+    EEPROM.update(MEMLOC_PRESET_3, byte(fBPM_Preset3));
     ledRed();
   }
 }
@@ -928,17 +973,17 @@ void ledInit(){
 
 void getPresetsFromEeprom(){
   uint8_t val;
-  val = EEPROM.read(10);
+  val = EEPROM.read(MEMLOC_PRESET_1);
   if(val!=255){ // a.k.a. hier wurde schonmal etwas gespeichert
     fBPM_Preset1 = val;
   }
 
-  val = EEPROM.read(20);
+  val = EEPROM.read(MEMLOC_PRESET_2);
   if(val!=255){
     fBPM_Preset2 = val;
   }
 
-  val = EEPROM.read(30);
+  val = EEPROM.read(MEMLOC_PRESET_3);
   if(val!=255){
     fBPM_Preset3 = val;
   }
@@ -946,11 +991,21 @@ void getPresetsFromEeprom(){
 
 uint8_t getModeFromEeprom(){
   uint8_t val;
-  val = EEPROM.read(40);
+  val = EEPROM.read(MEMLOC_MODE);
   if(val!=255){ // a.k.a. hier wurde schonmal etwas gespeichert
     return val;
   }else{
     return CLOCKMODE_STANDALONE_A;
+  }
+}
+
+uint8_t getQRSOffsetFromEeprom(){
+  uint8_t val;
+  val = EEPROM.read(MEMLOC_QRSOFFSET);
+  if(val!=255){ // a.k.a. hier wurde schonmal etwas gespeichert
+    return val;
+  }else{
+    return 94; //Default, passt gut mit Ableton
   }
 }
 
