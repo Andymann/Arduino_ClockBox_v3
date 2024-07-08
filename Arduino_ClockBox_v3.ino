@@ -25,8 +25,8 @@
 /*
     SELECT WHICH HARDWARE WILL BE USED
 */
-#define V3_PROTOBOARD 0
-//#define V3_PCB 0
+//#define V3_PROTOBOARD 0
+#define V3_PCB 0
 
 #ifdef V3_PROTOBOARD
 #define TAPBUTTON 0
