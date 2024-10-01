@@ -2,6 +2,7 @@
     uClock 1.5.1
     button2 2.2.4
 
+    Bei Clocks mit 2 Presetbuttons gibt es ein Problem beim Sync mit externer Clock und NudgePlus, bzw NudgeMinus
 
     ToDO: Documentation for incoming midiclock (in via usb, out via ?)
           #why uclock AND taptempo?
