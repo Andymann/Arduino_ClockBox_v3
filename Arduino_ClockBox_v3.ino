@@ -25,8 +25,8 @@
 /*
     SELECT WHICH HARDWARE WILL BE USED
 */
-//#define V3_PROTOBOARD 0
-#define V3_PCB 0
+#define V3_PROTOBOARD 0
+//#define V3_PCB 0
 
 #ifdef V3_PROTOBOARD
 #define TAPBUTTON 0
@@ -69,7 +69,7 @@
 #define DISPLAY_I2C_ADDRESS 0x3C
 SSD1306AsciiWire oled;
 
-#define VERSION "3.17b"
+#define VERSION "3.18"
 #define DEMUX_PIN A0
 
 CD74HC4067 mux(6,7,8,9);  // create a new CD74HC4067 object with its four select lines
@@ -84,8 +84,9 @@ Adafruit_NeoPixel pixels(NUM_LEDS, DATA_PIN, NEO_GRB + NEO_KHZ800);
 #define MIDI_START 0xFA
 #define MIDI_STOP  0xFC
 
+#define INTERNAL_PPQN 96
 
-uint8_t iQuantizeRestartOffset; // Damit ein restart echt mega genau ankommt; test per Ableton Metronom: 94 sweet spot. 
+uint8_t iQuantizeRestartOffset; // Damit ein restart echt mega genau ankommt; test per Ableton Metronom: //94 sweet spot. 
 #define LONGCLICKTIMEMS 2000
 
 #define NEXTPRESET_NONE 0
@@ -328,11 +329,16 @@ void loop(){
       }
     }else{
       // bQRSChange = true
-      if( (iQuantizeRestartOffset>2) && (iQuantizeRestartOffset<253) ){
-        iQuantizeRestartOffset += iEncoder;
+      if(iEncoder < 0){
+        if(iQuantizeRestartOffset>1){
+          iQuantizeRestartOffset += iEncoder;
+        }
+      }else if(iEncoder > 0){
+        if(iQuantizeRestartOffset<INTERNAL_PPQN-1){
+          iQuantizeRestartOffset += iEncoder;
+        }
       }
     }
-    
   }
 
   if(iNextPreset != NEXTPRESET_NONE){
@@ -385,6 +391,7 @@ void checkForModeSwitch(){
     }
   }
   if((muxValue[ENCODERCLICK] == 0) && (muxValue[STOPBUTTON] == 0)){
+      
     if( bQRSChange == true){
       oled.clear(); // Artefakte loeschen
       EEPROM.update(MEMLOC_QRSOFFSET, byte(iQuantizeRestartOffset));
@@ -448,7 +455,7 @@ void updateStatusDisplay(){
     }else{
       oled.setCol(15);
     }
-    oled.print( String(iQuantizeRestartOffset) );
+    oled.print( String( iQuantizeRestartOffset) );
   }
   
 }
@@ -471,12 +478,13 @@ void checkMidiUSB(){
 
 void checkMidiDIN(){
     while (midi.available()>0){
-      uint8_t x = midi.read();
-      midiPacket.byte1 = x;
-      if( x==0xF0 ){
+      //uint8_t x = midi.read();
+      //midiPacket.byte1 = x;
+      midiPacket.byte1 = midi.read();
+      if( midiPacket.byte1==0xF0 ){
         iClockMode = CLOCKMODE_MIXXX;
         //fillSysexBuffer( midiPacket, 1 );
-      }else if(x==0xF7){
+      }else if(midiPacket.byte1==0xF7){
 
       }else{
 
@@ -705,7 +713,7 @@ void sendMidiStop(){
 void handle_bpm_led(uint32_t tick)
 {
   // BPM led indicator
-  if( (tick % (96) == (iQuantizeRestartOffset) )){
+  if( (tick % (INTERNAL_PPQN) == (INTERNAL_PPQN - iQuantizeRestartOffset) )){
     if( bQuantizeRestartWaiting == true){
       bQuantizeRestartWaiting = false;
       if(iClockMode==CLOCKMODE_STANDALONE_B){
@@ -714,7 +722,7 @@ void handle_bpm_led(uint32_t tick)
       sendMidiStart();
     }
   }
-  if ( !(tick % (96)) || (tick == 1) ) {  // first compass step will flash longer
+  if ( !(tick % (INTERNAL_PPQN)) || (tick == 1) ) {  // first compass step will flash longer
     bpm_blink_timer = 12;
     //digitalWrite(LED_BUILTIN, HIGH);
     iMeasureCount = 0;
@@ -724,7 +732,7 @@ void handle_bpm_led(uint32_t tick)
     showStatus(0, true);
 
 
-  } else if ( !(tick % (24)) ) {   // each quarter led on
+  } else if ( !(tick % (INTERNAL_PPQN/4)) ) {   // each quarter led on
     bpm_blink_timer = 12;
     iMeasureCount++;
     //digitalWrite(LED_BUILTIN, HIGH);
@@ -1005,7 +1013,7 @@ uint8_t getQRSOffsetFromEeprom(){
   if(val!=255){ // a.k.a. hier wurde schonmal etwas gespeichert
     return val;
   }else{
-    return 94; //Default, passt gut mit Ableton
+    return 1;//94; //Default, passt gut mit Ableton
   }
 }
 
