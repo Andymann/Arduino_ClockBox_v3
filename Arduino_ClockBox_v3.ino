@@ -1,11 +1,14 @@
 /*
-    uClock 1.5.1
+
+    Update uClock to latest version, set internal PPQN to 24, implement CV/Gate out.
+    Implement boot into update mode (hold STOP while power on).
+
     button2 2.2.4
 
     Bei Clocks mit 2 Presetbuttons gibt es ein Problem beim Sync mit externer Clock und NudgePlus, bzw NudgeMinus
 
     ToDO: Documentation for incoming midiclock (in via usb, out via ?)
-          #why uclock AND taptempo?
+          why uclock AND taptempo?
 */
 
 
@@ -13,7 +16,7 @@
 
 #include <light_CD74HC4067.h>
 #include "TapTempo.h" // Note the quotation marks. Because it's in the same folder as the code itself. Get it, e.g. from https://github.com/Andymann/ArduinoTapTempo
-#include <uClock.h> // FORCE 1.5.1
+#include <uClock.h>
 #include <Button2.h> // FORCE 2.2.4
 #include <Adafruit_NeoPixel.h>
 #include "MIDIUSB.h"
@@ -70,8 +73,10 @@
 #define DISPLAY_I2C_ADDRESS 0x3C
 SSD1306AsciiWire oled;
 
-#define VERSION "3.18"
+#define VERSION "3.22d"
 #define DEMUX_PIN A0
+
+#define SYNC_TX_PIN A2
 
 CD74HC4067 mux(6,7,8,9);  // create a new CD74HC4067 object with its four select lines
 
@@ -85,7 +90,7 @@ Adafruit_NeoPixel pixels(NUM_LEDS, DATA_PIN, NEO_GRB + NEO_KHZ800);
 #define MIDI_START 0xFA
 #define MIDI_STOP  0xFC
 
-#define INTERNAL_PPQN 96
+#define INTERNAL_PPQN 24  // needs to be 24 for CV/ Gate to work properly
 
 uint8_t iQuantizeRestartOffset; // Damit ein restart echt mega genau ankommt; test per Ableton Metronom: //94 sweet spot. 
 #define LONGCLICKTIMEMS 2000
@@ -135,8 +140,8 @@ bool bNewPresetSelected = false;
 #define CLOCKMODE_FOLLOW_48PPQN 5
 #define CLOCKMODE_FOLLOW_72PPQN 6
 #define CLOCKMODE_FOLLOW_96PPQN 7
-#define MODECOUNT 6
-uint8_t arrModes[] = {CLOCKMODE_STANDALONE_A, CLOCKMODE_STANDALONE_B, CLOCKMODE_FOLLOW_24PPQN, CLOCKMODE_FOLLOW_48PPQN, CLOCKMODE_FOLLOW_72PPQN, CLOCKMODE_FOLLOW_96PPQN, CLOCKMODE_MIXXX};
+#define MODECOUNT 3
+uint8_t arrModes[] = {CLOCKMODE_STANDALONE_A, CLOCKMODE_STANDALONE_B, CLOCKMODE_FOLLOW_24PPQN /*, CLOCKMODE_FOLLOW_48PPQN, CLOCKMODE_FOLLOW_72PPQN, CLOCKMODE_FOLLOW_96PPQN, CLOCKMODE_MIXXX*/};
 
 // you can define whether clock-ticks ("0xF8") are sent continuously or only when the box is playing
 // First option might improve syncing for, e.g., Ableton and other products that adopt to midi clock rather slowly 
@@ -158,6 +163,8 @@ int iTickCounter=0;
 boolean bModeSwitched = false;
 boolean bQRSChange = false;
 
+boolean bFirmwareUpdateMode = false;
+
 void setup(){
 
   iNextPreset = NEXTPRESET_NONE;
@@ -167,16 +174,19 @@ void setup(){
   ledInit();
   midi.begin(31250);
   pinMode(DEMUX_PIN, INPUT); // Set as input for reading through signal pin
+  pinMode(SYNC_TX_PIN, OUTPUT);
 
   tapTempo.setTotalTapValues(4);
 
   // Inits the clock
   uClock.init();
   // Set the callback function for the clock output to send MIDI Sync message.
-  uClock.setClock96PPQNOutput(ClockOut96PPQN);
+  uClock.setPPQN(INTERNAL_PPQN);
+  uClock.setOnPPQN(ClockOutPPQN);
+  //uClock.setOnSync24(ClockOutPPQN);
   // Set the callback function for MIDI Start and Stop messages.
-  uClock.setOnClockStartOutput(onClockStart);  
-  uClock.setOnClockStopOutput(onClockStop);
+  uClock.setOnClockStart(onClockStart);  
+  uClock.setOnClockStop(onClockStop);
   // Set the clock BPM
   setGlobalBPM( fBPM_Cache );
   
@@ -232,10 +242,23 @@ void setup(){
     uClock.start();
   }
 
-}
+  readMux();
+  if( muxValue[STOPBUTTON] == 1 ){
+    bFirmwareUpdateMode = true;
+    showUpdateInfo();
+  }
+
+}//setup
 
 void loop(){
 
+  if( bFirmwareUpdateMode ){
+    // Not sure if this helps but when uploading new stuff it might be
+    // beneficial to not shoot midi data (via USB)
+    delay(1);
+    return 0;
+  }
+  
   readMux();
 
   checkForModeSwitch();
@@ -359,7 +382,7 @@ void loop(){
 
   checkMidiUSB();
   checkMidiDIN();
-
+  
 }//
 
 // Standalone, mixxx, follow ...if(muxValue[ENCODERCLICK]==
@@ -460,6 +483,7 @@ void updateStatusDisplay(){
   }
   
 }
+
 
 void displaySelectedPreset(String p){
   oled.setInvertMode( false );
@@ -600,8 +624,8 @@ void readMux(){
     }
 }
 
-// The callback function wich will be called by Clock each Pulse of 96PPQN clock resolution.
-void ClockOut96PPQN(uint32_t tick) {
+// The callback function wich will be called by Clock each Pulse of clock resolution.
+void ClockOutPPQN(uint32_t tick) {
     // Send MIDI_CLOCK to external gears
     sendMidiClock();
     handle_bpm_led(tick);
@@ -713,9 +737,9 @@ void sendMidiStop(){
 
 void handle_bpm_led(uint32_t tick)
 {
-  // BPM led indicator
-  if( (tick % (INTERNAL_PPQN) == (INTERNAL_PPQN - iQuantizeRestartOffset) )){
-    if( bQuantizeRestartWaiting == true){
+
+  if( bQuantizeRestartWaiting == true){
+    if( (tick % (INTERNAL_PPQN*4) == (INTERNAL_PPQN*4 - iQuantizeRestartOffset) )){
       bQuantizeRestartWaiting = false;
       if(iClockMode==CLOCKMODE_STANDALONE_B){
         sendMidiStop();
@@ -723,32 +747,38 @@ void handle_bpm_led(uint32_t tick)
       sendMidiStart();
     }
   }
-  if ( !(tick % (INTERNAL_PPQN)) || (tick == 1) ) {  // first compass step will flash longer
+  
+  // at the beginning or on every downbeat
+  if((tick==1)||( !(tick % (INTERNAL_PPQN*4)))){
     bpm_blink_timer = 12;
-    //digitalWrite(LED_BUILTIN, HIGH);
     iMeasureCount = 0;
-    //ledIndicateMeasure( iMeasureCount );
-    ledIndicateStart();
-    //showStatus(iMeasureCount+1, true);
-    showStatus(0, true);
-
-
-  } else if ( !(tick % (INTERNAL_PPQN/4)) ) {   // each quarter led on
-    bpm_blink_timer = 12;
-    iMeasureCount++;
-    //digitalWrite(LED_BUILTIN, HIGH);
     ledIndicateMeasure( iMeasureCount );
-    //showStatus(iMeasureCount+1, true);
+    iMeasureCount++;
     showStatus(0, true);
-    
+
+  } else if ( !(tick % (INTERNAL_PPQN)) ) {   // each quarter note //led on
+    bpm_blink_timer = 8;
+    ledIndicateMeasure( iMeasureCount );
+    iMeasureCount++;
+    showStatus(0, true);
+
   } else if ( !(tick % bpm_blink_timer) ) { // get led off
-    //digitalWrite(LED_BUILTIN, LOW);
     if(!bQuantizeRestartWaiting){
       ledOff();
     }
-    //showStatus(iMeasureCount+1, false);
     showStatus(0, false);
   }
+
+  //CV Gate out
+  if ( !(tick % 6) ) {
+    digitalWrite(SYNC_TX_PIN, true);
+  }
+
+  if ( !((tick-1)% 6) ) {
+    digitalWrite(SYNC_TX_PIN, false);
+  }
+
+
 }
 
 void tapHandler(Button2& btn) {
@@ -944,8 +974,12 @@ void ledIndicateMeasure(int pMeasure){
     if(bQuantizeRestartWaiting){
       pixels.setPixelColor(pMeasure, pixels.Color(LED_ON, LED_OFF, LED_ON));
     }else{
-      pixels.clear();
-      pixels.setPixelColor(pMeasure, pixels.Color(LED_OFF, LED_OFF, LED_ON));
+      if(pMeasure==0){
+        ledGreen();
+      }else{
+        pixels.clear();
+        pixels.setPixelColor(pMeasure, pixels.Color(LED_OFF, LED_OFF, LED_ON));
+      }
     }
     pixels.show();
   }
@@ -1112,6 +1146,16 @@ void showInfo(int pWaitMS){
   delay(pWaitMS);
 }
 
+void showUpdateInfo(){
+  oled.clear();
+  oled.setFont(ZevvPeep8x16);
+  oled.set2X();
+  oled.println("ClockBox");
+  oled.set1X();
+  oled.println();//("  Version ");oled.println(VERSION);
+  oled.println();
+  oled.println("   UpdateMode");
+}
 
 void fillSysexBuffer(midiEventPacket_t pRX, uint8_t pSize){
   if(pRX.byte1 == 0xF0){
