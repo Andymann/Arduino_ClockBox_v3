@@ -1,8 +1,8 @@
 /*
 
-    Update uClock to latest version, set internal PPQN to 24, implement CV/Gate out.
-    Implement boot into update mode (hold STOP while power on).
+    BREAKING CHANGE: use Hardware Serial
 
+    Select between incoming clock from DIN or USB or to react on START and STOP only without sync via CLOCK
     button2 2.2.4
 
     Bei Clocks mit 2 Presetbuttons gibt es ein Problem beim Sync mit externer Clock und NudgePlus, bzw NudgeMinus
@@ -12,7 +12,7 @@
 */
 
 
-#include <SoftwareSerial.h>
+//#include <SoftwareSerial.h>
 
 #include <light_CD74HC4067.h>
 #include "TapTempo.h" // Note the quotation marks. Because it's in the same folder as the code itself. Get it, e.g. from https://github.com/Andymann/ArduinoTapTempo
@@ -24,7 +24,8 @@
 #include <Wire.h>
 #include "SSD1306Ascii.h"
 #include "SSD1306AsciiWire.h"
-
+#include "MovingAverage.h"
+#include <math.h>
 
 /*
     SELECT WHICH HARDWARE WILL BE USED
@@ -73,7 +74,7 @@
 #define DISPLAY_I2C_ADDRESS 0x3C
 SSD1306AsciiWire oled;
 
-#define VERSION "3.22d"
+#define VERSION "3.24a"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -109,7 +110,7 @@ Button2 btnHelper_PRESET1;
 Button2 btnHelper_PRESET2;
 Button2 btnHelper_PRESET3;
 
-SoftwareSerial midi(16, A3);
+//SoftwareSerial midi(16, A3); // rx, tx
 
 uint8_t bpm_blink_timer = 1;
 float fBPM_Cache = 94.0;
@@ -131,17 +132,19 @@ bool bNudgeActive = false;
 String sActivePreset = "AAAAAAAAAAAAAA";
 bool bNewPresetSelected = false;
 
+bool encoder0PinALast = false;
+bool encoder0PinBLast = false;
+uint8_t encoder0Pos = 128;
+uint8_t encoder0PosOld = 128;
 
 
 #define CLOCKMODE_STANDALONE_A 1  // Send Midi-Start on quantized restart
 #define CLOCKMODE_STANDALONE_B 2  // Send Midi Stop-Start on quantized restart
-#define CLOCKMODE_MIXXX 3 
-#define CLOCKMODE_FOLLOW_24PPQN 4
-#define CLOCKMODE_FOLLOW_48PPQN 5
-#define CLOCKMODE_FOLLOW_72PPQN 6
-#define CLOCKMODE_FOLLOW_96PPQN 7
-#define MODECOUNT 3
-uint8_t arrModes[] = {CLOCKMODE_STANDALONE_A, CLOCKMODE_STANDALONE_B, CLOCKMODE_FOLLOW_24PPQN /*, CLOCKMODE_FOLLOW_48PPQN, CLOCKMODE_FOLLOW_72PPQN, CLOCKMODE_FOLLOW_96PPQN, CLOCKMODE_MIXXX*/};
+#define CLOCKMODE_FOLLOW_24PPQN_DIN 3
+#define CLOCKMODE_FOLLOW_24PPQN_USB 4
+#define CLOCKMODE_FOLLOW_STARTSTOP 5
+#define MODECOUNT 5
+uint8_t arrModes[] = {CLOCKMODE_STANDALONE_A, CLOCKMODE_STANDALONE_B, CLOCKMODE_FOLLOW_24PPQN_DIN, CLOCKMODE_FOLLOW_24PPQN_USB, CLOCKMODE_FOLLOW_STARTSTOP};
 
 // you can define whether clock-ticks ("0xF8") are sent continuously or only when the box is playing
 // First option might improve syncing for, e.g., Ableton and other products that adopt to midi clock rather slowly 
@@ -154,9 +157,6 @@ uint8_t iClockMode = CLOCKMODE_STANDALONE_A;
 
 byte muxValue[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; // The value of the Buttons as read from the multiplexer
 
-#define BUFFERSIZE 60
-byte sysexBuffer[BUFFERSIZE];
-
 midiEventPacket_t midiPacket;
 
 int iTickCounter=0;
@@ -165,14 +165,16 @@ boolean bQRSChange = false;
 
 boolean bFirmwareUpdateMode = false;
 
+MovingAverage <unsigned long, 4> filter;
+
 void setup(){
 
   iNextPreset = NEXTPRESET_NONE;
-  //Serial.begin(115200);
-  //delay(251);
+  Serial1.begin(31250);
+
   pixels.begin();
   ledInit();
-  midi.begin(31250);
+  //midi.begin(31250);
   pinMode(DEMUX_PIN, INPUT); // Set as input for reading through signal pin
   pinMode(SYNC_TX_PIN, OUTPUT);
 
@@ -231,10 +233,14 @@ void setup(){
  
   getPresetsFromEeprom();
   iClockMode = getModeFromEeprom();
+  if((iClockMode == CLOCKMODE_FOLLOW_24PPQN_DIN)||(iClockMode == CLOCKMODE_FOLLOW_24PPQN_USB)){
+    setGlobalBPM( 1.0 );
+  }
   iQuantizeRestartOffset = getQRSOffsetFromEeprom();
 
 
   showInfo(1500);
+  oled.clear();
   ledOff();
 
 
@@ -249,6 +255,7 @@ void setup(){
   }
 
 }//setup
+
 
 void loop(){
 
@@ -276,7 +283,6 @@ void loop(){
     if( abs(tapTempo.getBPM() - fBPM_Cache) >= 1.0){
       bNewBPM = true;
       fBPM_Cache = uint8_t(tapTempo.getBPM());   // Nur ganzzahlige Werte darstellen, Rundungsfehler ueberdecken
-      //uClock.setTempo( fBPM_Cache );
       setGlobalBPM(fBPM_Cache);
       if(bIsPlaying){
 //        showBPM( fBPM_Cache );
@@ -284,31 +290,13 @@ void loop(){
         showStatus( 0, false );
       }
     }
-  }else if(iClockMode==CLOCKMODE_MIXXX){
-    if( abs(uClock.getTempo() - fBPM_Sysex) >= .1){
-      if( bNudgeActive==false ){
-        fBPM_Cache = fBPM_Sysex;
-        setGlobalBPM(fBPM_Sysex);
-        if(bIsPlaying){
-//          showBPM( fBPM_Sysex );
-        }else{
-          showStatus( 0, false );
-        }
-      }else{
-        if(bIsPlaying){
-//          showBPM( fBPM_Cache );
-        }else{
-          showStatus( 0, false );
-        }
-      }
-    }
   }
   
-  else if(iClockMode==CLOCKMODE_FOLLOW_24PPQN || CLOCKMODE_FOLLOW_48PPQN || CLOCKMODE_FOLLOW_72PPQN || CLOCKMODE_FOLLOW_96PPQN){
+  else if((iClockMode==CLOCKMODE_FOLLOW_24PPQN_DIN )||(iClockMode==CLOCKMODE_FOLLOW_24PPQN_USB )){
     if( abs(tapTempo.getBPM() - fBPM_Cache) >= 1.0){
       if( !bNudgeActive ){
         bNewBPM = true;
-        fBPM_Cache = (tapTempo.getBPM());
+        fBPM_Cache = round(tapTempo.getBPM());
         uClock.setTempo( fBPM_Cache );
         if(bIsPlaying){
 //          showBPM( fBPM_Cache );
@@ -324,6 +312,7 @@ void loop(){
 
   if(iEncoder!=0){
     if( !bQRSChange ){
+      /*
       if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B)){
         if(muxValue[ENCODERCLICK]==0){
           fBPM_Cache += iEncoder;
@@ -332,17 +321,7 @@ void loop(){
         }
         bNewBPM = true;
         setGlobalBPM( fBPM_Cache);
-      }else if(iClockMode==CLOCKMODE_MIXXX){
-        if(muxValue[ENCODERCLICK]==0){
-          fBPM_Sysex += iEncoder*1.;
-          fBPM_Cache = fBPM_Sysex;
-        }else{
-          fBPM_Sysex += iEncoder*0.1;
-          fBPM_Cache = fBPM_Sysex;
-        }
-        bNewBPM = true;
-        setGlobalBPM( fBPM_Cache );
-      }else if(iClockMode==CLOCKMODE_FOLLOW_24PPQN || CLOCKMODE_FOLLOW_48PPQN || CLOCKMODE_FOLLOW_72PPQN || CLOCKMODE_FOLLOW_96PPQN){
+      }else if((iClockMode==CLOCKMODE_FOLLOW_24PPQN_DIN )||(iClockMode==CLOCKMODE_FOLLOW_24PPQN_USB )||(iClockMode==CLOCKMODE_FOLLOW_STARTSTOP )){
         if(muxValue[ENCODERCLICK]==0){
           fBPM_Cache += iEncoder;
         }else{
@@ -351,6 +330,14 @@ void loop(){
         bNewBPM = true;
         setGlobalBPM( fBPM_Cache);
       }
+      */
+      if(muxValue[ENCODERCLICK]==0){
+          fBPM_Cache += iEncoder;
+        }else{
+          fBPM_Cache += iEncoder*.10;
+        }
+        bNewBPM = true;
+        setGlobalBPM( fBPM_Cache);
     }else{
       // bQRSChange = true
       if(iEncoder < 0){
@@ -380,13 +367,15 @@ void loop(){
     bNewPresetSelected = false;
   }
 
-  checkMidiUSB();
-  checkMidiDIN();
+  if((iClockMode==CLOCKMODE_FOLLOW_24PPQN_DIN )||(iClockMode==CLOCKMODE_FOLLOW_STARTSTOP)){
+    checkMidiDIN();    
+  }else if((iClockMode==CLOCKMODE_FOLLOW_24PPQN_USB )||(iClockMode==CLOCKMODE_FOLLOW_STARTSTOP)){
+    checkMidiUSB();
+  }
   
 }//
 
-// Standalone, mixxx, follow ...if(muxValue[ENCODERCLICK]==
-
+// Standalone, follow ...
 void checkForModeSwitch(){
   if(muxValue[ENCODERCLICK] && muxValue[STARTBUTTON]){
     if( !bModeSwitched ){
@@ -449,21 +438,24 @@ void updateStatusDisplay(){
       oled.setInvertMode( bDisplayInverted );
       oled.setRow(0);
       oled.print("  ");
-    }else if( iClockMode == CLOCKMODE_MIXXX ){
-      oled.setCol(88);
-      oled.print("SYSEX");
-    }else if( iClockMode == CLOCKMODE_FOLLOW_24PPQN ){
-      oled.setCol(32);
-      oled.print("ext.Clock 24");
-    }else if( iClockMode == CLOCKMODE_FOLLOW_48PPQN ){
-      oled.setCol(32);
-      oled.print("ext.Clock 48");
-    }else if( iClockMode == CLOCKMODE_FOLLOW_72PPQN ){
-      oled.setCol(32);
-      oled.print("ext.Clock 72");
-    }else if( iClockMode == CLOCKMODE_FOLLOW_96PPQN ){
-      oled.setCol(32);
-      oled.print("ext.Clock 96");
+    }else if(iClockMode==CLOCKMODE_FOLLOW_24PPQN_DIN ){
+      oled.setCol(10);
+      oled.setInvertMode( false );
+      oled.print("ext.Clk DIN 24");
+      //----THIS makes it slow and unprecise
+      //oled.setCol(112);
+      //oled.setInvertMode( bDisplayInverted );
+      //oled.setRow(0);
+      //oled.print("  ");
+
+    }else if(iClockMode==CLOCKMODE_FOLLOW_24PPQN_USB ){
+      oled.setCol(10);
+      oled.setInvertMode( false );
+      oled.print("ext.Clk USB 24");
+    }else if(iClockMode==CLOCKMODE_FOLLOW_STARTSTOP ){
+      oled.setCol(10);
+      oled.setInvertMode( false );
+      oled.print("ext. StartStop");
     }
   }else{
     // bQRSChange = true
@@ -497,34 +489,29 @@ void displaySelectedPreset(String p){
 void checkMidiUSB(){
   midiPacket = MidiUSB.read();
   if (midiPacket.header != 0) {
-    processMidiIn( midiPacket );
+    processUsbMidiIn( midiPacket );
   }
 }
 
 void checkMidiDIN(){
-    while (midi.available()>0){
-      //uint8_t x = midi.read();
-      //midiPacket.byte1 = x;
-      midiPacket.byte1 = midi.read();
-      if( midiPacket.byte1==0xF0 ){
-        iClockMode = CLOCKMODE_MIXXX;
-        //fillSysexBuffer( midiPacket, 1 );
-      }else if(midiPacket.byte1==0xF7){
-
-      }else{
-
-      } 
-
-      if( iClockMode == CLOCKMODE_MIXXX ){
-        fillSysexBuffer( midiPacket, 1 );
-        processSysexBuffer();
+    if (Serial1.available()>0){
+      midiPacket.byte1 = Serial1.read();
+      if( midiPacket.byte1 == MIDI_CLOCK){
+        if((iClockMode==CLOCKMODE_FOLLOW_24PPQN_DIN )||(iClockMode==CLOCKMODE_FOLLOW_24PPQN_USB)){
+          processIncomingClock();
+        }
+      }else if (midiPacket.byte1 == MIDI_START){
+        startPlaying();
+      }else if (midiPacket.byte1 == MIDI_STOP){
+        stopPlaying();
+      } else{
+        Serial1.flush();
       }
-      
     }
 }
 
 
-void processMidiIn(midiEventPacket_t pRX){
+void processUsbMidiIn(midiEventPacket_t pRX){
   switch (pRX.header & 0x0F) {
     case 0x00:  // Misc. Reserved for future extensions.
       break;
@@ -552,32 +539,14 @@ void processMidiIn(midiEventPacket_t pRX){
       break;
     case 0x04:  // SysEx starts or continues
       // append sysex buffer with 3 bytes
-      //iClockMode = CLOCKMODE_MIXXX;
-      if(iClockMode==CLOCKMODE_MIXXX){
-        fillSysexBuffer( pRX, 3 );
-        processSysexBuffer();
-      }
       break;
     case 0x05:  // Single-byte System Common Message or SysEx ends with the following single byte
       // append sysex buffer with 1 byte
-      if(iClockMode==CLOCKMODE_MIXXX){
-        fillSysexBuffer( pRX, 1 );
-        processSysexBuffer();
-      }
       break;
     case 0x06:  // SysEx ends with the following two bytes
-      // append sysex buffer with 2 bytes
-      if(iClockMode==CLOCKMODE_MIXXX){
-        fillSysexBuffer( pRX, 2 );
-        processSysexBuffer();
-      }
       break;
     case 0x07:  // SysEx ends with the following three bytes
       // append sysex buffer with 3 bytes
-      if(iClockMode==CLOCKMODE_MIXXX){
-        fillSysexBuffer( pRX, 3 );
-        processSysexBuffer();
-      }
       break;
     case 0x0F:  // Single Byte, TuneRequest, Clock, Start, Continue, Stop, etc.
       processIncomingClock();
@@ -603,7 +572,7 @@ void selectPreset(uint8_t pPresetID){
     bNewBPM = true;
     displayPresetName("Preset 3");
   }
-//  showBPM( fBPM_Cache );
+
   if(!bIsPlaying){
     startPlaying();
   }
@@ -644,100 +613,77 @@ void onClockStop() {
 }
 
 
-
 void processIncomingClock(){
-  if(iClockMode==CLOCKMODE_FOLLOW_24PPQN){
-    if(iTickCounter>=23){
+  if((iClockMode==CLOCKMODE_FOLLOW_24PPQN_DIN )||(iClockMode==CLOCKMODE_FOLLOW_24PPQN_USB )){
+    if(iTickCounter>=INTERNAL_PPQN-1 ){
       iTickCounter=0;
       if( !bNudgeActive ){
+        //ledGreen();
         tapTempo.update( true );
+        if(!bIsPlaying){
+          ledShowTick();
+        }
       }
     }else{
-      iTickCounter++;
-    }
-  }else if(iClockMode==CLOCKMODE_FOLLOW_48PPQN){
-    if(iTickCounter>=47){
-      iTickCounter=0;
-      if( !bNudgeActive ){
-        tapTempo.update( true );
-      }
-    }else{
-      iTickCounter++;
-    }
-  }else if(iClockMode==CLOCKMODE_FOLLOW_72PPQN){
-    if(iTickCounter>=71){
-      iTickCounter=0;
-      if( !bNudgeActive ){
-        tapTempo.update( true );
-        //Serial.println(tapTempo.getBPM() );
-      }
-    }else{
-      iTickCounter++;
-    }
-  }else if(iClockMode==CLOCKMODE_FOLLOW_96PPQN){
-    if(iTickCounter>=95){
-      iTickCounter=0;
-      if( !bNudgeActive ){
-        tapTempo.update( true );
-      }
-    }else{
-      iTickCounter++;
+      iTickCounter++;      
+      // It would be nice to have the indicator stying on a little longer
+      // but since we are also sending out midi clock there is a competing
+      // call to ledOff() in handle_bpm_led().
+      // Repeatedly calling ledOff with every tick also has negative impact on accuracy.
+      // This way there is at least some indicator for incoming data that is only mildly annoying.
+    //  ledOff();
     }
   }
 }
 
 void sendMidiClock(){
+  midiEventPacket_t p = {0x0F, MIDI_CLOCK, 0, 0};
   if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B)){
-     midiEventPacket_t p = {0x0F, MIDI_CLOCK, 0, 0};
     MidiUSB.sendMIDI(p);
     MidiUSB.flush();
-    midi.write(MIDI_CLOCK);
-  }else if(iClockMode==CLOCKMODE_MIXXX){
-     midiEventPacket_t p = {0x0F, MIDI_CLOCK, 0, 0};
+    Serial1.write(MIDI_CLOCK);
+  }else if(iClockMode==CLOCKMODE_FOLLOW_24PPQN_DIN ){
     MidiUSB.sendMIDI(p);
     MidiUSB.flush();
-    midi.write(MIDI_CLOCK);
-  }else if((iClockMode == CLOCKMODE_FOLLOW_24PPQN)||(iClockMode == CLOCKMODE_FOLLOW_48PPQN)||(iClockMode == CLOCKMODE_FOLLOW_72PPQN)||(iClockMode == CLOCKMODE_FOLLOW_96PPQN)){
-    midi.write(MIDI_CLOCK);
+    Serial1.write(MIDI_CLOCK);
+  }else if(iClockMode==CLOCKMODE_FOLLOW_24PPQN_USB ){
+    Serial1.write(MIDI_CLOCK);
   }
  
 }
 
 void sendMidiStart(){
+  midiEventPacket_t p = {0x0F, MIDI_START, 0, 0};
   if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B)){
-    midiEventPacket_t p = {0x0F, MIDI_START, 0, 0};
     MidiUSB.sendMIDI(p);
     MidiUSB.flush();
-    midi.write(MIDI_START);
-  }else if(iClockMode==CLOCKMODE_MIXXX){
-    midiEventPacket_t p = {0x0F, MIDI_START, 0, 0};
+    Serial1.write(MIDI_START);
+  }else if(iClockMode == CLOCKMODE_FOLLOW_24PPQN_DIN){
     MidiUSB.sendMIDI(p);
     MidiUSB.flush();
-    midi.write(MIDI_START);
-  }else if((iClockMode == CLOCKMODE_FOLLOW_24PPQN)||(iClockMode == CLOCKMODE_FOLLOW_48PPQN)||(iClockMode == CLOCKMODE_FOLLOW_72PPQN)||(iClockMode == CLOCKMODE_FOLLOW_96PPQN)){
-    midi.write(MIDI_START);
+    Serial1.write(MIDI_START);
+  }else if(iClockMode == CLOCKMODE_FOLLOW_24PPQN_USB){
+    Serial1.write(MIDI_START);
   }
 }
 
 void sendMidiStop(){
+  midiEventPacket_t p = {0x0F, MIDI_STOP, 0, 0};
   if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B)){
-    midiEventPacket_t p = {0x0F, MIDI_STOP, 0, 0};
     MidiUSB.sendMIDI(p);
     MidiUSB.flush();
-    midi.write(MIDI_STOP);
-  }else if(iClockMode==CLOCKMODE_MIXXX){
-    midiEventPacket_t p = {0x0F, MIDI_STOP, 0, 0};
+    Serial1.write(MIDI_STOP);
+  }else if(iClockMode == CLOCKMODE_FOLLOW_24PPQN_DIN){
     MidiUSB.sendMIDI(p);
     MidiUSB.flush();
-    midi.write(MIDI_STOP);
-  }else if((iClockMode == CLOCKMODE_FOLLOW_24PPQN)||(iClockMode == CLOCKMODE_FOLLOW_48PPQN)||(iClockMode == CLOCKMODE_FOLLOW_72PPQN)||(iClockMode == CLOCKMODE_FOLLOW_96PPQN)){
-    midi.write(MIDI_STOP);
+    Serial1.write(MIDI_STOP);
+  }else if(iClockMode == CLOCKMODE_FOLLOW_24PPQN_USB){
+    Serial1.write(MIDI_STOP);
   }
 }
 
 void handle_bpm_led(uint32_t tick)
 {
-
   if( bQuantizeRestartWaiting == true){
     if( (tick % (INTERNAL_PPQN*4) == (INTERNAL_PPQN*4 - iQuantizeRestartOffset) )){
       bQuantizeRestartWaiting = false;
@@ -777,12 +723,10 @@ void handle_bpm_led(uint32_t tick)
   if ( !((tick-1)% 6) ) {
     digitalWrite(SYNC_TX_PIN, false);
   }
-
-
 }
 
 void tapHandler(Button2& btn) {
-    //Serial.println("tap Handler");
+    //Serial1.println("tap Handler");
     //if((iClockMode==CLOCKMODE_STANDALONE_A)||(iClockMode==CLOCKMODE_MIXXX)){
       tapTempo.update(true);
     //}
@@ -800,31 +744,12 @@ void startHandler(Button2& btn) {
 }
 
 void restartHandler(Button2& btn){
-  if(iClockMode==CLOCKMODE_MIXXX){
-    //bool b = muxValue[4]||muxValue[7]; ;
-    if( btn.isPressed() ){
-      if(!bIsPlaying){
-        bNewBPM = true;
-//        showBPM( fBPM_Cache );
-        //sendMidiStop();
-        sendMidiStart();
-        //if(iClockBehaviour == SENDCLOCK_WHENPLAYING){
-          uClock.start();
-        //}
-        bIsPlaying = true;
-      }else{
-        stopPlaying();
-      }
-      
-    }
-  }
   
 }
 
 void startPlaying(){
   if((!bIsPlaying) && (!bModeSwitched)){
     bNewBPM = true;
-//    showBPM( fBPM_Cache );
     sendMidiStart();
     uClock.start(); //if already running this causes a clock reset (-> LED handling, tick,)
   }else{
@@ -859,8 +784,6 @@ byte stopButtonStateHandler() {
 }
 
 
-
-
 //Button or Footswitch
 byte preset1ButtonStateHandler() {
   bool b = muxValue[PRESETBUTTON1]||muxValue[PRESETSWITCH1];
@@ -884,9 +807,7 @@ void preset1LongClickDetected(Button2& btn) {
 
 
 void preset1ChangeHandler( Button2& btn ){
-  if(iClockMode == CLOCKMODE_MIXXX){
-    nudgeMinus( btn.isPressed() );
-  }else if((iClockMode == CLOCKMODE_FOLLOW_24PPQN)||(iClockMode == CLOCKMODE_FOLLOW_48PPQN)||(iClockMode == CLOCKMODE_FOLLOW_72PPQN)||(iClockMode == CLOCKMODE_FOLLOW_96PPQN)){
+  if((iClockMode == CLOCKMODE_FOLLOW_24PPQN_DIN)||(iClockMode == CLOCKMODE_FOLLOW_24PPQN_USB)){
     //if(!bNudgeActive){
       nudgeMinus( btn.isPressed() );
     //}
@@ -894,10 +815,8 @@ void preset1ChangeHandler( Button2& btn ){
 }
 
 void preset3ChangeHandler( Button2& btn ){
-  if(iClockMode == CLOCKMODE_MIXXX){
-    nudgePlus( btn.isPressed() );
-  }else if((iClockMode == CLOCKMODE_FOLLOW_24PPQN)||(iClockMode == CLOCKMODE_FOLLOW_48PPQN)||(iClockMode == CLOCKMODE_FOLLOW_72PPQN)||(iClockMode == CLOCKMODE_FOLLOW_96PPQN)){
-    //if(!bNudgeActive){
+  if((iClockMode == CLOCKMODE_FOLLOW_24PPQN_DIN)||(iClockMode == CLOCKMODE_FOLLOW_24PPQN_USB)){
+      //if(!bNudgeActive){
       nudgePlus( btn.isPressed() );
     //}
   }
@@ -919,11 +838,6 @@ void preset2LongClickDetected(Button2& btn) {
     fBPM_Preset2 = tapTempo.getBPM();
     EEPROM.update(MEMLOC_PRESET_2, byte(fBPM_Preset2));
     ledRed();
-  }else if(iClockMode == CLOCKMODE_MIXXX){
-    //bool b = muxValue[5]||muxValue[8];
-    //if(btn.isPressed()){
-    //  stopPlaying();
-    //}
   }
 }
 
@@ -957,14 +871,12 @@ void ledIndicateStart(){
 }
 
 void setGlobalBPM(float f){
-  //Serial.println("setGlobalBPM " + String(f));
+  //Serial1.println("setGlobalBPM " + String(f));
   bNewBPM = true;
   if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B)){
     tapTempo.setBPM( f );
-  }else if(iClockMode==CLOCKMODE_MIXXX){
-    
-  }else if((iClockMode == CLOCKMODE_FOLLOW_24PPQN)||(iClockMode == CLOCKMODE_FOLLOW_48PPQN)||(iClockMode == CLOCKMODE_FOLLOW_72PPQN)||(iClockMode == CLOCKMODE_FOLLOW_96PPQN)){
-    tapTempo.setBPM( f );
+  }else if((iClockMode == CLOCKMODE_FOLLOW_24PPQN_DIN)||(iClockMode == CLOCKMODE_FOLLOW_24PPQN_USB)){
+   tapTempo.setBPM( f );
   }
   uClock.setTempo( f );
 }
@@ -991,6 +903,12 @@ void ledGreen(){
     pixels.setPixelColor(i, pixels.Color(LED_OFF, LED_ON, LED_OFF));
   }
     pixels.show();
+}
+
+void ledShowTick(){
+  pixels.clear();
+  pixels.setPixelColor(NUM_LEDS-1, pixels.Color(7, 4, LED_OFF));
+  pixels.show();
 }
 
 void ledOff(){
@@ -1052,11 +970,6 @@ uint8_t getQRSOffsetFromEeprom(){
   }
 }
 
-bool encoder0PinALast = false;
-bool encoder0PinBLast = false;
-uint8_t encoder0Pos = 128;
-uint8_t encoder0PosOld = 128;
-
 // Returns -1 / +1
 int queryEncoder(){
   int iReturn = 0;
@@ -1101,11 +1014,9 @@ void testDisplay(){
 
 void showBPM(float p){
   oled.setInvertMode( false );
-  if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B)){
+  //if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B) || (iClockMode==CLOCKMODE_FOLLOW_24PPQN_DIN) || (iClockMode==CLOCKMODE_FOLLOW_24PPQN_USB)){
     oled.setFont(Verdana_digits_24);
-  }else if(iClockMode==CLOCKMODE_MIXXX){
-
-  }
+  //}
   if( bNewBPM ){
     oled.clear();
     bNewBPM = false;
@@ -1157,63 +1068,7 @@ void showUpdateInfo(){
   oled.println("   UpdateMode");
 }
 
-void fillSysexBuffer(midiEventPacket_t pRX, uint8_t pSize){
-  if(pRX.byte1 == 0xF0){
-    clearSysexBuffer();
-  }
 
-  for(int i=0; i<BUFFERSIZE; i++){
-    if(sysexBuffer[i]==0xFF){
-      if( pSize==1 ){
-        sysexBuffer[i]=pRX.byte1;
-      }else if ( pSize==2 ) {
-        sysexBuffer[i]=pRX.byte1;
-        sysexBuffer[i+1]=pRX.byte2;
-      }else if( pSize==3 ){
-        sysexBuffer[i]=pRX.byte1;
-        sysexBuffer[i+1]=pRX.byte2;
-        sysexBuffer[i+2]=pRX.byte3;
-      }
-      break; //exit for
-    }
-  }
-}
-
-void processSysexBuffer(){
-  bool bBufferComplete = false;
-  uint8_t x=0;
-  for(int i=0; i<BUFFERSIZE; i++){
-    if(sysexBuffer[i] != 0xFF){
-      x++;
-    }
-    if(sysexBuffer[i] == 0xF7){
-      bBufferComplete = true;
-    }
-  }
-  if( (x > 2) && (bBufferComplete) ){
-    for(int i=0; i<BUFFERSIZE; i++){
-      if((sysexBuffer[i] == 0x7F) && (sysexBuffer[i+1] == 0x01) /*&& (sysexBuffer[i+2] == 0x11)*/){
-        //BPM. Since we only have 1 clock instance there is no need to distinguish between decks
-        String s = String(sysexBuffer[i+3], 16) + String(sysexBuffer[i+4], 16) + String(sysexBuffer[i+5], 16) + String(sysexBuffer[i+6], 16) + String(sysexBuffer[i+7], 16);
-        float temp = s.toInt();
-        temp /= 100.0;
-        if(temp > 10.0 ){
-          fBPM_Sysex = temp;
-          fBPM_Cache = temp;
-          setGlobalBPM( fBPM_Sysex );
-          uClock.start();
-        }
-        break;
-      }
-    }
-  }
-}
-
-void clearSysexBuffer(){
-  for(int i=0; i<BUFFERSIZE; i++){
-    sysexBuffer[i] = 0xFF;
-  }
-}
 
 void nudgePlus(bool pOnOff){
   if(pOnOff){
