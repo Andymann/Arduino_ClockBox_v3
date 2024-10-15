@@ -16,4 +16,6 @@ Secondly, cut the trace that provides midi output as shown in the picture. If do
   
 Now connect pin 1 (Tx) of the Arduino to pin 2 of IC labeled 'U2' (you can also connect pin 1 to pin 4, 6, 8, 11, 15 or 17 of U2, see above).  
 Connect pin 2 (Rx) of the Arduino to pin 6 of the optocoupler 6N138
-![Rewiring .](https://github.com/Andymann/Arduino_ClockBox_v3/blob/main/images/image_4.jpg?raw=true)
+![Rewiring 74LS241.](https://github.com/Andymann/Arduino_ClockBox_v3/blob/main/images/image_4.jpg?raw=true)
+  
+![Rewiring 6N138.](https://github.com/Andymann/Arduino_ClockBox_v3/blob/main/images/image_5.jpg?raw=true)
