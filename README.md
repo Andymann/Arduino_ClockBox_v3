@@ -17,7 +17,7 @@ This mode puts the clock into follower-mode. it waits for clock-impulses (24 PPQ
 ### Mode: ext.Clk USB 24
 This mode puts the clock into follower-mode. it waits for clock-impulses (24 PPQN) on the USB input of the box. When clock impulses are received the bpm settings will automatically adopt to the incoming bpm. Incoming clock pulses are indicated by the 4th LED lighting up accordingly. Clock Data will be sent out via all midi-out ports but NOT via USB. The box will start sending out midi data when a MIDI START is received. the box will stop on an incoming MIDI STOP pulse.
   
-### Mode: ext StartStop
+### Mode: ext. StartStop
 This mode puts the clock into follower-mode. It ONLY reacts to incoming MIDI START or MIDI STOP messages. The BPM of the ClockBox is not affected by incoming pulses and has to set manually.
   
 
