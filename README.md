@@ -18,8 +18,10 @@ This mode is intended for running the ClockBox as the single source of Midi-cloc
 ### Mode: ext.Clk DIN 24
 This mode puts the clock into follower-mode. it waits for clock-impulses (24 PPQN) on the TRS input on the back side of the box to automatically adopt to the incoming bpm. Incoming clock pulses are indicated by the 4th LED lighting up accordingly. Clock Data will be sent out via all midi-out ports as well as USB. The box will start sending out midi data when a MIDI START is received. the box will stop on an incoming MIDI STOP pulse.  
   
-<img src="images/mode_ext_din.jpg" width="400">  
 
+<img src="images/mode_ext_din.jpg" width="400">
+<img src="images/clockbox_midi_in.gif" width="400">  
+  
 ### Mode: ext.Clk USB 24
 This mode puts the clock into follower-mode. it waits for clock-impulses (24 PPQN) on the USB input of the box. When clock impulses are received the bpm settings will automatically adopt to the incoming bpm. Incoming clock pulses are indicated by the 4th LED lighting up accordingly. Clock Data will be sent out via all midi-out ports but NOT via USB. The box will start sending out midi data when a MIDI START is received. the box will stop on an incoming MIDI STOP pulse.  
   
