@@ -6,20 +6,29 @@ pinlayouts etc.
 ## Operational Modes  
 The ClockBox v3 supports different modes of operation. The selected mode is shown in the lower half of the Display. The mode can be selected by pressing down the rotary encoder and hitting the green ("start") button. The selected mode is saved automatically and will be restored at next power-on.  
 ### Mode: QRS Start ("QuantizedReStart - Start")
-This mode is intended for running the ClockBox as the single source of Midi-clock-data. It sends out clock pulses according to the value shown in the display. When you are doing a quantized restart - i.e. hitting the PLAY-button when the clock is already running it will send out another CLOCK START impulse on the next first downbeat.
+This mode is intended for running the ClockBox as the single source of Midi-clock-data. It sends out clock pulses according to the value shown in the display. When you are doing a quantized restart - i.e. hitting the PLAY-button when the clock is already running it will send out another CLOCK START impulse on the next first downbeat.  
+  
+<img src="images/mode_qrs_start.jpg" width="400">  
   
 ### Mode: QRS Stop-Start ("QuantizedReStart - Stop Start")
-This mode is intended for running the ClockBox as the single source of Midi-clock-data. It sends out clock pulses according to the value shown in the display. When you are doing a quantized restart - i.e. hitting the PLAY-button when the clock is already running it will send out a CLOCK STOP impulse followed by a CLOCK START impulse on the next first downbeat. This allows for devices like the SP404 Mk2 do be pulled into a running session without having to stop the clock manually.
+This mode is intended for running the ClockBox as the single source of Midi-clock-data. It sends out clock pulses according to the value shown in the display. When you are doing a quantized restart - i.e. hitting the PLAY-button when the clock is already running it will send out a CLOCK STOP impulse followed by a CLOCK START impulse on the next first downbeat. This allows for devices like the SP404 Mk2 do be pulled into a running session without having to stop the clock manually.  
+  
+<img src="images/mode_qrs_stopstart.jpg" width="400">  
   
 ### Mode: ext.Clk DIN 24
-This mode puts the clock into follower-mode. it waits for clock-impulses (24 PPQN) on the TRS input on the back side of the box to automatically adopt to the incoming bpm. Incoming clock pulses are indicated by the 4th LED lighting up accordingly. Clock Data will be sent out via all midi-out ports as well as USB. The box will start sending out midi data when a MIDI START is received. the box will stop on an incoming MIDI STOP pulse.
+This mode puts the clock into follower-mode. it waits for clock-impulses (24 PPQN) on the TRS input on the back side of the box to automatically adopt to the incoming bpm. Incoming clock pulses are indicated by the 4th LED lighting up accordingly. Clock Data will be sent out via all midi-out ports as well as USB. The box will start sending out midi data when a MIDI START is received. the box will stop on an incoming MIDI STOP pulse.  
   
+<img src="images/mode_ext_din.jpg" width="400">  
+
 ### Mode: ext.Clk USB 24
-This mode puts the clock into follower-mode. it waits for clock-impulses (24 PPQN) on the USB input of the box. When clock impulses are received the bpm settings will automatically adopt to the incoming bpm. Incoming clock pulses are indicated by the 4th LED lighting up accordingly. Clock Data will be sent out via all midi-out ports but NOT via USB. The box will start sending out midi data when a MIDI START is received. the box will stop on an incoming MIDI STOP pulse.
+This mode puts the clock into follower-mode. it waits for clock-impulses (24 PPQN) on the USB input of the box. When clock impulses are received the bpm settings will automatically adopt to the incoming bpm. Incoming clock pulses are indicated by the 4th LED lighting up accordingly. Clock Data will be sent out via all midi-out ports but NOT via USB. The box will start sending out midi data when a MIDI START is received. the box will stop on an incoming MIDI STOP pulse.  
+  
+<img src="images/mode_ext_usb.jpg" width="400"> 
   
 ### Mode: ext. StartStop
-This mode puts the clock into follower-mode. It ONLY reacts to incoming MIDI START or MIDI STOP messages. The BPM of the ClockBox is not affected by incoming pulses and has to set manually.
+This mode puts the clock into follower-mode. It ONLY reacts to incoming MIDI START or MIDI STOP messages. The BPM of the ClockBox is not affected by incoming pulses and has to set manually.  
   
+<img src="images/mode_ext_stopstart.jpg" width="400"> 
 
 ## Rewiring to Hardware Serial  
 Boards of revision 202401001 are layed out to use SoftwareSerial. However, early stages of developments revealed that using the built-in hardware serial interface of the µController leads to better results, especially in conjunction with incoming clock pulses.  
