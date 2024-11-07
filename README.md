@@ -6,7 +6,7 @@ pinlayouts etc.
 ## Operational Modes  
 The ClockBox v3 supports different modes of operation. The selected mode is shown in the lower half of the Display. The mode can be selected by pressing down the rotary encoder and hitting the green ("start") button. The selected mode is saved automatically and will be restored at next power-on.  
 ### Mode: QRS Start ("QuantizedReStart - Start")
-This mode is intended for running the ClockBox as the single source of Midi-clock-data. It sends out clock pulses according to the value shown in the display. When you are doing a quantized restart - i.e. hitting the PLAY-button when the clock is already running it will send out another CLOCK START impulse on the next first downbeat.  
+This mode is intended for running the ClockBox as the single source of Midi-clock-data. It sends out clock pulses according to the value shown in the display. When you are doing a quantized restart- i.e. hitting the PLAY-button when the clock is already running- it will send out another CLOCK START impulse on the next first downbeat. This allows devices to be 'pulled into' a running session without you having to worry about hitting a button in the right moment.
   
 <img src="images/mode_qrs_start.jpg" width="400">  
   
