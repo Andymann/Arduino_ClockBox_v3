@@ -10,9 +10,9 @@
     ToDO: Documentation for incoming midiclock (in via usb, out via ?)
           why uclock AND taptempo?
 
-    U8X8_SH1107_SEEED_128X128_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE);
+    
 */
-
+//U8X8_SH1107_SEEED_128X128_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE);
 
 //#include <SoftwareSerial.h>
 
@@ -24,8 +24,7 @@
 #include "MIDIUSB.h"
 #include <EEPROM.h>
 #include <Wire.h>
-#include "SSD1306Ascii.h"
-#include "SSD1306AsciiWire.h"
+
 #include "MovingAverage.h"
 #include <math.h>
 
@@ -35,34 +34,64 @@
 //#define V3_PROTOBOARD 0
 #define V3_PCB 0
 
+
+/*
+  Selecr which type of display will be used
+*/
+
+#define DISPLAY_128x64
+//#define DISPLAY_128x128
+
+#ifdef DISPLAY_128x64
+  #include "SSD1306Ascii.h"
+  #include "SSD1306AsciiWire.h"
+  // 0X3C+SA0 - 0x3C or 0x3D
+  #define DISPLAY_I2C_ADDRESS 0x3C
+  SSD1306AsciiWire i2cDisplay;
+#endif
+
+#ifdef DISPLAY_128x128 
+  #include <U8x8lib.h>
+  #ifdef U8X8_HAVE_HW_SPI
+    #include <SPI.h>
+  #endif
+
+  #ifdef U8X8_HAVE_HW_I2C
+    #include <Wire.h>
+  #endif
+  U8X8_SH1107_SEEED_128X128_HW_I2C i2cDisplay(/* reset=*/ U8X8_PIN_NONE);
+#endif
+
+
+
 #ifdef V3_PROTOBOARD
-#define TAPBUTTON 0
-#define STARTBUTTON 1
-#define STOPBUTTON 2
-#define PRESETBUTTON1 3
-#define PRESETBUTTON2 4
-#define PRESETBUTTON3 5
-#define PRESETSWITCH1 6
-#define PRESETSWITCH2 7
-#define PRESETSWITCH3 8
-#define ENCODERCLICK 13
-#define ENCODERPINA 14
-#define ENCODERPINB 15
+  #define TAPBUTTON 0
+  #define STARTBUTTON 1
+  #define STOPBUTTON 2
+  #define PRESETBUTTON1 3
+  #define PRESETBUTTON2 4
+  #define PRESETBUTTON3 5
+  #define PRESETSWITCH1 6
+  #define PRESETSWITCH2 7
+  #define PRESETSWITCH3 8
+  #define ENCODERCLICK 13
+  #define ENCODERPINA 14
+  #define ENCODERPINB 15
 #endif
 
 #ifdef V3_PCB
-#define TAPBUTTON 0
-#define STARTBUTTON 1
-#define STOPBUTTON 2
-#define PRESETBUTTON1 3
-#define PRESETBUTTON2 4
-#define PRESETBUTTON3 5
-#define PRESETSWITCH1 6
-#define PRESETSWITCH2 7
-#define PRESETSWITCH3 8
-#define ENCODERCLICK 12
-#define ENCODERPINA 13
-#define ENCODERPINB 14
+  #define TAPBUTTON 0
+  #define STARTBUTTON 1
+  #define STOPBUTTON 2
+  #define PRESETBUTTON1 3
+  #define PRESETBUTTON2 4
+  #define PRESETBUTTON3 5
+  #define PRESETSWITCH1 6
+  #define PRESETSWITCH2 7
+  #define PRESETSWITCH3 8
+  #define ENCODERCLICK 12
+  #define ENCODERPINA 13
+  #define ENCODERPINB 14
 #endif
 
 
@@ -72,11 +101,9 @@
 #define MEMLOC_MODE 40
 #define MEMLOC_QRSOFFSET 50
 
-// 0X3C+SA0 - 0x3C or 0x3D
-#define DISPLAY_I2C_ADDRESS 0x3C
-SSD1306AsciiWire oled;
 
-#define VERSION "3.24a"
+
+#define VERSION "3.25"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -228,10 +255,15 @@ void setup(){
   btnHelper_PRESET3.setLongClickDetectedHandler(preset3LongClickDetected);
   btnHelper_PRESET3.setChangedHandler(preset3ChangeHandler);  // Falls externer sync via sysex
 
-  Wire.begin();
-  Wire.setClock(400000L);
-  oled.begin(&Adafruit128x64, DISPLAY_I2C_ADDRESS);
-  
+  #ifdef DISPLAY_128x64
+    Wire.begin();
+    Wire.setClock(400000L);
+    i2cDisplay.begin(&Adafruit128x64, DISPLAY_I2C_ADDRESS);
+  #endif
+
+  #ifdef DISPLAY_128x128
+    i2cDisplay.begin();
+  #endif
  
   getPresetsFromEeprom();
   iClockMode = getModeFromEeprom();
@@ -242,7 +274,7 @@ void setup(){
 
 
   showInfo(1500);
-  oled.clear();
+  clearDisplay();
   ledOff();
 
 
@@ -387,7 +419,7 @@ void checkForModeSwitch(){
         if(iClockMode==arrModes[i]){
           iClockMode = arrModes[(i+1)%MODECOUNT];
           iTickCounter=0;
-          oled.clear();
+          clearDisplay();
           EEPROM.update(MEMLOC_MODE, byte(iClockMode));
           break;
         }
@@ -408,84 +440,111 @@ void checkForModeSwitch(){
   if((muxValue[ENCODERCLICK] == 0) && (muxValue[STOPBUTTON] == 0)){
       
     if( bQRSChange == true){
-      oled.clear(); // Artefakte loeschen
+      clearDisplay(); // Artefakte loeschen
       EEPROM.update(MEMLOC_QRSOFFSET, byte(iQuantizeRestartOffset));
     }
     bQRSChange = false;
     
   }
-
 }
 
 void updateStatusDisplay(){
+  #ifdef DISPLAY_128x64
+    updateStatusDisplay_128x64();
+  #endif
+
+  #ifdef DISPLAY_128x128
+    updateStatusDisplay_128x128();
+  #endif
+}
+
+//2DO
+void updateStatusDisplay_128x128(){
+  Serial.println("!!!!!!!XXXXXXXXXXXX");
+}
+
+void updateStatusDisplay_128x64(){
   if( !bQRSChange ){
     showBPM(fBPM_Cache);
-    oled.setInvertMode( bDisplayInverted );
-    oled.setFont(ZevvPeep8x16);
-    oled.set1X();
-    oled.setRow(6);
+    i2cDisplay.setInvertMode( bDisplayInverted );
+    i2cDisplay.setFont(ZevvPeep8x16);
+    i2cDisplay.set1X();
+    i2cDisplay.setRow(6);
     if(iClockMode==CLOCKMODE_STANDALONE_A){
-      oled.setCol(1);
-      oled.setInvertMode( false );
-      oled.print("QRS Start");
-      oled.setCol(112);
-      oled.setInvertMode( bDisplayInverted );
-      oled.setRow(0);
-      oled.print("  ");
+      i2cDisplay.setCol(1);
+      i2cDisplay.setInvertMode( false );
+      i2cDisplay.print("QRS Start");
+      i2cDisplay.setCol(112);
+      i2cDisplay.setInvertMode( bDisplayInverted );
+      i2cDisplay.setRow(0);
+      i2cDisplay.print("  ");
     }else if(iClockMode==CLOCKMODE_STANDALONE_B){
-      oled.setCol(1);
-      oled.setInvertMode( false );
-      oled.print("QRS Stop-Start");
-      oled.setCol(112);
-      oled.setInvertMode( bDisplayInverted );
-      oled.setRow(0);
-      oled.print("  ");
+      i2cDisplay.setCol(1);
+      i2cDisplay.setInvertMode( false );
+      i2cDisplay.print("QRS Stop-Start");
+      i2cDisplay.setCol(112);
+      i2cDisplay.setInvertMode( bDisplayInverted );
+      i2cDisplay.setRow(0);
+      i2cDisplay.print("  ");
     }else if(iClockMode==CLOCKMODE_FOLLOW_24PPQN_DIN ){
-      oled.setCol(10);
-      oled.setInvertMode( false );
-      oled.print("ext.Clk DIN 24");
+      i2cDisplay.setCol(10);
+      i2cDisplay.setInvertMode( false );
+      i2cDisplay.print("ext.Clk DIN 24");
       //----THIS makes it slow and unprecise
-      //oled.setCol(112);
-      //oled.setInvertMode( bDisplayInverted );
-      //oled.setRow(0);
-      //oled.print("  ");
+      //i2cDisplay.setCol(112);
+      //i2cDisplay.setInvertMode( bDisplayInverted );
+      //i2cDisplay.setRow(0);
+      //i2cDisplay.print("  ");
 
     }else if(iClockMode==CLOCKMODE_FOLLOW_24PPQN_USB ){
-      oled.setCol(10);
-      oled.setInvertMode( false );
-      oled.print("ext.Clk USB 24");
+      i2cDisplay.setCol(10);
+      i2cDisplay.setInvertMode( false );
+      i2cDisplay.print("ext.Clk USB 24");
     }else if(iClockMode==CLOCKMODE_FOLLOW_STARTSTOP ){
-      oled.setCol(10);
-      oled.setInvertMode( false );
-      oled.print("ext. StartStop");
+      i2cDisplay.setCol(10);
+      i2cDisplay.setInvertMode( false );
+      i2cDisplay.print("ext. StartStop");
     }
   }else{
     // bQRSChange = true
-    oled.clear();
-    oled.setInvertMode( false );
-    oled.set1X();
-    oled.setRow(0);
-    oled.print( "QRS Offset:");
-    oled.setRow(3);
-    oled.set2X();
+    i2cDisplay.clear();
+    i2cDisplay.setInvertMode( false );
+    i2cDisplay.set1X();
+    i2cDisplay.setRow(0);
+    i2cDisplay.print( "QRS Offset:");
+    i2cDisplay.setRow(3);
+    i2cDisplay.set2X();
     if(iQuantizeRestartOffset<100){
-      oled.setCol(30);
+      i2cDisplay.setCol(30);
     }else{
-      oled.setCol(15);
+      i2cDisplay.setCol(15);
     }
-    oled.print( String( iQuantizeRestartOffset) );
+    i2cDisplay.print( String( iQuantizeRestartOffset) );
   }
-  
 }
 
-
 void displaySelectedPreset(String p){
-  oled.setInvertMode( false );
-  oled.setFont(ZevvPeep8x16);
-  oled.set1X();
-  oled.setRow(6);
-  oled.setCol(5);
-  oled.print( p );
+  #ifdef DISPLAY_128x64
+    displaySelectedPreset_128x64(p);
+  #endif
+
+  #ifdef DISPLAY_128x128
+    displaySelectedPreset_128x128(p);
+  #endif
+}
+
+//2Do
+void displaySelectedPreset_128x128(String p){
+
+}
+
+void displaySelectedPreset_128x64(String p){
+  i2cDisplay.setInvertMode( false );
+  i2cDisplay.setFont(ZevvPeep8x16);
+  i2cDisplay.set1X();
+  i2cDisplay.setRow(6);
+  i2cDisplay.setCol(5);
+  i2cDisplay.print( p );
 }
 
 void checkMidiUSB(){
@@ -1006,21 +1065,48 @@ int queryEncoder(){
 }
 
 void clearDisplay(){
-  oled.clear();
+  i2cDisplay.clear();
 }
 
+
+
 void testDisplay(){
-  oled.clear();
-  oled.print("Hello world!");
+  #ifdef DISPLAY_128x64
+    testDisplay_128x64();
+  #endif
+
+  #ifdef DISPLAY_128x128
+    testDisplay_128x128();
+  #endif
+}
+
+void testDisplay_128x64(){
+  i2cDisplay.clear();
+  i2cDisplay.print("Hello world!");
+}
+
+void testDisplay_128x128(){
+  i2cDisplay.clear();
+  i2cDisplay.print("Hello world!");
 }
 
 void showBPM(float p){
-  oled.setInvertMode( false );
+  #ifdef DISPLAY_128x64
+    showBPM_128x64(p);
+  #endif
+
+  #ifdef DISPLAY_128x128
+    showBPM_128x128(p);
+  #endif
+}
+
+void showBPM_128x64(float p){
+  i2cDisplay.setInvertMode( false );
   //if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B) || (iClockMode==CLOCKMODE_FOLLOW_24PPQN_DIN) || (iClockMode==CLOCKMODE_FOLLOW_24PPQN_USB)){
-    oled.setFont(Verdana_digits_24);
+    i2cDisplay.setFont(Verdana_digits_24);
   //}
   if( bNewBPM ){
-    oled.clear();
+    i2cDisplay.clear();
     bNewBPM = false;
   }
 
@@ -1029,48 +1115,94 @@ void showBPM(float p){
     bUpdateStatusDisplay = true;
   }
   
-  oled.set2X();
-  oled.setRow(0);
+  i2cDisplay.set2X();
+  i2cDisplay.setRow(0);
   if(p<100){
-    oled.setCol(30);
+    i2cDisplay.setCol(30);
   }else{
-    oled.setCol(15);
+    i2cDisplay.setCol(15);
   }
-  oled.print( String(p) );
+  i2cDisplay.print( String(p) );
+}
+
+//2DO
+void showBPM_128x128(float p){
 
 }
 
 
 void showStatus(int iMeasure, bool pInverted){
+  #ifdef DISPLAY_128x64
+    showStatus_128x64(iMeasure, pInverted);
+  #endif
+
+  #ifdef DISPLAY_128x128
+    showStatus_128x128(iMeasure, pInverted);
+  #endif
+}
+
+void showStatus_128x64(int iMeasure, bool pInverted){
   bDisplayInverted = pInverted;
   bUpdateStatusDisplay = true;
 }
 
+//2Do
+void showStatus_128x128(int iMeasure, bool pInverted){
+
+}
 
 void showInfo(int pWaitMS){
-  oled.setFont(ZevvPeep8x16);
-  oled.clear();
-  oled.set2X();
-  oled.println("ClockBox");
-  oled.set1X();
-  oled.print("  Version ");oled.println(VERSION);
-  oled.println();
-  oled.println(" Andyland.info");
+  #ifdef DISPLAY_128x64
+    showInfo_128x64(pWaitMS);
+  #endif
+
+  #ifdef DISPLAY_128x128
+    showInfo_128x128(pWaitMS);
+  #endif
+}
+
+void showInfo_128x64(int pWaitMS){
+  i2cDisplay.setFont(ZevvPeep8x16);
+  i2cDisplay.clear();
+  i2cDisplay.set2X();
+  i2cDisplay.println("ClockBox");
+  i2cDisplay.set1X();
+  i2cDisplay.print("  Version ");i2cDisplay.println(VERSION);
+  i2cDisplay.println();
+  i2cDisplay.println(" Andyland.info");
+  delay(pWaitMS);
+}
+
+//2Do
+void showInfo_128x128(int pWaitMS){
   delay(pWaitMS);
 }
 
 void showUpdateInfo(){
-  oled.clear();
-  oled.setFont(ZevvPeep8x16);
-  oled.set2X();
-  oled.println("ClockBox");
-  oled.set1X();
-  oled.println();//("  Version ");oled.println(VERSION);
-  oled.println();
-  oled.println("   UpdateMode");
+  #ifdef DISPLAY_128x64
+   showUpdateInfo_128x64();
+  #endif
+
+  #ifdef DISPLAY_128x128
+    showUpdateInfo_128x128();
+  #endif
 }
 
+void showUpdateInfo_128x64(){
+  i2cDisplay.clear();
+  i2cDisplay.setFont(ZevvPeep8x16);
+  i2cDisplay.set2X();
+  i2cDisplay.println("ClockBox");
+  i2cDisplay.set1X();
+  i2cDisplay.println();//("  Version ");i2cDisplay.println(VERSION);
+  i2cDisplay.println();
+  i2cDisplay.println("   UpdateMode");
+}
 
+//2Do
+void showUpdateInfo_128x128(){
+
+}
 
 void nudgePlus(bool pOnOff){
   if(pOnOff){
