@@ -9,6 +9,8 @@
 
     ToDO: Documentation for incoming midiclock (in via usb, out via ?)
           why uclock AND taptempo?
+
+    U8X8_SH1107_SEEED_128X128_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE);
 */
 
 
