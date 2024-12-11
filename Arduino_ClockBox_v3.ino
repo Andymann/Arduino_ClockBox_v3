@@ -31,12 +31,12 @@
 /*
     SELECT WHICH HARDWARE WILL BE USED
 */
-//#define V3_PROTOBOARD 0
-#define V3_PCB 0
+//#define V3_PROTOBOARD
+#define V3_PCB
 
 
 /*
-  Selecr which type of display will be used
+  Select which type of display will be used
 */
 
 #define DISPLAY_128x64
@@ -407,7 +407,14 @@ void loop(){
     checkMidiUSB();
   }
   
-}//
+}
+
+void checkMidiUSB(){
+  midiPacket = MidiUSB.read();
+  if (midiPacket.header != 0) {
+    processUsbMidiIn( midiPacket );
+  }
+}
 
 // Standalone, follow ...
 void checkForModeSwitch(){
@@ -463,65 +470,7 @@ void updateStatusDisplay_128x128(){
 
 }
 
-void updateStatusDisplay_128x64(){
-  if( !bQRSChange ){
-    showBPM(fBPM_Cache);
-    i2cDisplay.setInvertMode( bDisplayInverted );
-    i2cDisplay.setFont(ZevvPeep8x16);
-    i2cDisplay.set1X();
-    i2cDisplay.setRow(6);
-    if(iClockMode==CLOCKMODE_STANDALONE_A){
-      i2cDisplay.setCol(1);
-      i2cDisplay.setInvertMode( false );
-      i2cDisplay.print("QRS Start");
-      i2cDisplay.setCol(112);
-      i2cDisplay.setInvertMode( bDisplayInverted );
-      i2cDisplay.setRow(0);
-      i2cDisplay.print("  ");
-    }else if(iClockMode==CLOCKMODE_STANDALONE_B){
-      i2cDisplay.setCol(1);
-      i2cDisplay.setInvertMode( false );
-      i2cDisplay.print("QRS Stop-Start");
-      i2cDisplay.setCol(112);
-      i2cDisplay.setInvertMode( bDisplayInverted );
-      i2cDisplay.setRow(0);
-      i2cDisplay.print("  ");
-    }else if(iClockMode==CLOCKMODE_FOLLOW_24PPQN_DIN ){
-      i2cDisplay.setCol(10);
-      i2cDisplay.setInvertMode( false );
-      i2cDisplay.print("ext.Clk DIN 24");
-      //----THIS makes it slow and unprecise
-      //i2cDisplay.setCol(112);
-      //i2cDisplay.setInvertMode( bDisplayInverted );
-      //i2cDisplay.setRow(0);
-      //i2cDisplay.print("  ");
 
-    }else if(iClockMode==CLOCKMODE_FOLLOW_24PPQN_USB ){
-      i2cDisplay.setCol(10);
-      i2cDisplay.setInvertMode( false );
-      i2cDisplay.print("ext.Clk USB 24");
-    }else if(iClockMode==CLOCKMODE_FOLLOW_STARTSTOP ){
-      i2cDisplay.setCol(10);
-      i2cDisplay.setInvertMode( false );
-      i2cDisplay.print("ext. StartStop");
-    }
-  }else{
-    // bQRSChange = true
-    i2cDisplay.clear();
-    i2cDisplay.setInvertMode( false );
-    i2cDisplay.set1X();
-    i2cDisplay.setRow(0);
-    i2cDisplay.print( "QRS Offset:");
-    i2cDisplay.setRow(3);
-    i2cDisplay.set2X();
-    if(iQuantizeRestartOffset<100){
-      i2cDisplay.setCol(30);
-    }else{
-      i2cDisplay.setCol(15);
-    }
-    i2cDisplay.print( String( iQuantizeRestartOffset) );
-  }
-}
 
 void displaySelectedPreset(String p){
   #ifdef DISPLAY_128x64
@@ -538,21 +487,7 @@ void displaySelectedPreset_128x128(String p){
 
 }
 
-void displaySelectedPreset_128x64(String p){
-  i2cDisplay.setInvertMode( false );
-  i2cDisplay.setFont(ZevvPeep8x16);
-  i2cDisplay.set1X();
-  i2cDisplay.setRow(6);
-  i2cDisplay.setCol(5);
-  i2cDisplay.print( p );
-}
 
-void checkMidiUSB(){
-  midiPacket = MidiUSB.read();
-  if (midiPacket.header != 0) {
-    processUsbMidiIn( midiPacket );
-  }
-}
 
 void checkMidiDIN(){
     if (Serial1.available()>0){
@@ -1100,30 +1035,7 @@ void showBPM(float p){
   #endif
 }
 
-void showBPM_128x64(float p){
-  i2cDisplay.setInvertMode( false );
-  //if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B) || (iClockMode==CLOCKMODE_FOLLOW_24PPQN_DIN) || (iClockMode==CLOCKMODE_FOLLOW_24PPQN_USB)){
-    i2cDisplay.setFont(Verdana_digits_24);
-  //}
-  if( bNewBPM ){
-    i2cDisplay.clear();
-    bNewBPM = false;
-  }
 
-  // to prevent the 'BPM' string from disappearing when tempo is changed on a stopped box
-  if(!bIsPlaying){
-    bUpdateStatusDisplay = true;
-  }
-  
-  i2cDisplay.set2X();
-  i2cDisplay.setRow(0);
-  if(p<100){
-    i2cDisplay.setCol(30);
-  }else{
-    i2cDisplay.setCol(15);
-  }
-  i2cDisplay.print( String(p) );
-}
 
 //2DO
 void showBPM_128x128(float p){
@@ -1161,17 +1073,7 @@ void showInfo(int pWaitMS){
   #endif
 }
 
-void showInfo_128x64(int pWaitMS){
-  i2cDisplay.setFont(ZevvPeep8x16);
-  i2cDisplay.clear();
-  i2cDisplay.set2X();
-  i2cDisplay.println("ClockBox");
-  i2cDisplay.set1X();
-  i2cDisplay.print("  Version ");i2cDisplay.println(VERSION);
-  i2cDisplay.println();
-  i2cDisplay.println(" Andyland.info");
-  delay(pWaitMS);
-}
+
 
 //2Do
 void showInfo_128x128(int pWaitMS){
@@ -1188,16 +1090,7 @@ void showUpdateInfo(){
   #endif
 }
 
-void showUpdateInfo_128x64(){
-  i2cDisplay.clear();
-  i2cDisplay.setFont(ZevvPeep8x16);
-  i2cDisplay.set2X();
-  i2cDisplay.println("ClockBox");
-  i2cDisplay.set1X();
-  i2cDisplay.println();//("  Version ");i2cDisplay.println(VERSION);
-  i2cDisplay.println();
-  i2cDisplay.println("   UpdateMode");
-}
+
 
 //2Do
 void showUpdateInfo_128x128(){
@@ -1234,3 +1127,124 @@ void nudgeMinus(bool pOnOff){
     bNudgeActive = false;
   }
 }
+
+#ifdef DISPLAY_128x64
+void updateStatusDisplay_128x64(){
+  if( !bQRSChange ){
+    showBPM(fBPM_Cache);
+    i2cDisplay.setInvertMode( bDisplayInverted );
+    i2cDisplay.setFont(ZevvPeep8x16);
+    i2cDisplay.set1X();
+    i2cDisplay.setRow(6);
+    if(iClockMode==CLOCKMODE_STANDALONE_A){
+      i2cDisplay.setCol(1);
+      i2cDisplay.setInvertMode( false );
+      i2cDisplay.print("QRS Start");
+      i2cDisplay.setCol(112);
+      i2cDisplay.setInvertMode( bDisplayInverted );
+      i2cDisplay.setRow(0);
+      i2cDisplay.print("  ");
+    }else if(iClockMode==CLOCKMODE_STANDALONE_B){
+      i2cDisplay.setCol(1);
+      i2cDisplay.setInvertMode( false );
+      i2cDisplay.print("QRS Stop-Start");
+      i2cDisplay.setCol(112);
+      i2cDisplay.setInvertMode( bDisplayInverted );
+      i2cDisplay.setRow(0);
+      i2cDisplay.print("  ");
+    }else if(iClockMode==CLOCKMODE_FOLLOW_24PPQN_DIN ){
+      i2cDisplay.setCol(10);
+      i2cDisplay.setInvertMode( false );
+      i2cDisplay.print("ext.Clk DIN 24");
+      //----THIS makes it slow and unprecise
+      //i2cDisplay.setCol(112);
+      //i2cDisplay.setInvertMode( bDisplayInverted );
+      //i2cDisplay.setRow(0);
+      //i2cDisplay.print("  ");
+
+    }else if(iClockMode==CLOCKMODE_FOLLOW_24PPQN_USB ){
+      i2cDisplay.setCol(10);
+      i2cDisplay.setInvertMode( false );
+      i2cDisplay.print("ext.Clk USB 24");
+    }else if(iClockMode==CLOCKMODE_FOLLOW_STARTSTOP ){
+      i2cDisplay.setCol(10);
+      i2cDisplay.setInvertMode( false );
+      i2cDisplay.print("ext. StartStop");
+    }
+  }else{
+    // bQRSChange = true
+    i2cDisplay.clear();
+    i2cDisplay.setInvertMode( false );
+    i2cDisplay.set1X();
+    i2cDisplay.setRow(0);
+    i2cDisplay.print( "QRS Offset:");
+    i2cDisplay.setRow(3);
+    i2cDisplay.set2X();
+    if(iQuantizeRestartOffset<100){
+      i2cDisplay.setCol(30);
+    }else{
+      i2cDisplay.setCol(15);
+    }
+    i2cDisplay.print( String( iQuantizeRestartOffset) );
+  }
+}
+
+void displaySelectedPreset_128x64(String p){
+  i2cDisplay.setInvertMode( false );
+  i2cDisplay.setFont(ZevvPeep8x16);
+  i2cDisplay.set1X();
+  i2cDisplay.setRow(6);
+  i2cDisplay.setCol(5);
+  i2cDisplay.print( p );
+}
+
+
+void showInfo_128x64(int pWaitMS){
+  i2cDisplay.setFont(ZevvPeep8x16);
+  i2cDisplay.clear();
+  i2cDisplay.set2X();
+  i2cDisplay.println("ClockBox");
+  i2cDisplay.set1X();
+  i2cDisplay.print("  Version ");i2cDisplay.println(VERSION);
+  i2cDisplay.println();
+  i2cDisplay.println(" Andyland.info");
+  delay(pWaitMS);
+}
+
+void showUpdateInfo_128x64(){
+  i2cDisplay.clear();
+  i2cDisplay.setFont(ZevvPeep8x16);
+  i2cDisplay.set2X();
+  i2cDisplay.println("ClockBox");
+  i2cDisplay.set1X();
+  i2cDisplay.println();//("  Version ");i2cDisplay.println(VERSION);
+  i2cDisplay.println();
+  i2cDisplay.println("   UpdateMode");
+}
+
+
+void showBPM_128x64(float p){
+  i2cDisplay.setInvertMode( false );
+  //if((iClockMode==CLOCKMODE_STANDALONE_A) || (iClockMode==CLOCKMODE_STANDALONE_B) || (iClockMode==CLOCKMODE_FOLLOW_24PPQN_DIN) || (iClockMode==CLOCKMODE_FOLLOW_24PPQN_USB)){
+    i2cDisplay.setFont(Verdana_digits_24);
+  //}
+  if( bNewBPM ){
+    i2cDisplay.clear();
+    bNewBPM = false;
+  }
+
+  // to prevent the 'BPM' string from disappearing when tempo is changed on a stopped box
+  if(!bIsPlaying){
+    bUpdateStatusDisplay = true;
+  }
+  
+  i2cDisplay.set2X();
+  i2cDisplay.setRow(0);
+  if(p<100){
+    i2cDisplay.setCol(30);
+  }else{
+    i2cDisplay.setCol(15);
+  }
+  i2cDisplay.print( String(p) );
+}
+#endif
