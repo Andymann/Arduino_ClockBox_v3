@@ -460,7 +460,7 @@ void updateStatusDisplay(){
 
 //2DO
 void updateStatusDisplay_128x128(){
-  Serial.println("!!!!!!!XXXXXXXXXXXX");
+
 }
 
 void updateStatusDisplay_128x64(){
