@@ -39,8 +39,8 @@
   Select which type of display will be used
 */
 
-#define DISPLAY_128x64
-//#define DISPLAY_128x128
+//#define DISPLAY_128x64
+#define DISPLAY_128x128
 
 #ifdef DISPLAY_128x64
   #include "SSD1306Ascii.h"
@@ -263,6 +263,8 @@ void setup(){
 
   #ifdef DISPLAY_128x128
     i2cDisplay.begin();
+    i2cDisplay.setPowerSave(0);
+    i2cDisplay.setFont(u8x8_font_px437wyse700b_2x2_r);
   #endif
  
   getPresetsFromEeprom();
@@ -465,13 +467,6 @@ void updateStatusDisplay(){
   #endif
 }
 
-//2DO
-void updateStatusDisplay_128x128(){
-
-}
-
-
-
 void displaySelectedPreset(String p){
   #ifdef DISPLAY_128x64
     displaySelectedPreset_128x64(p);
@@ -481,12 +476,6 @@ void displaySelectedPreset(String p){
     displaySelectedPreset_128x128(p);
   #endif
 }
-
-//2Do
-void displaySelectedPreset_128x128(String p){
-
-}
-
 
 
 void checkMidiDIN(){
@@ -1000,7 +989,14 @@ int queryEncoder(){
 }
 
 void clearDisplay(){
-  i2cDisplay.clear();
+  #ifdef DISPLAY_128x64
+    i2cDisplay.clear();
+  #endif
+
+  #ifdef DISPLAY_128x128
+    i2cDisplay.clear();
+  #endif
+  
 }
 
 
@@ -1015,16 +1011,6 @@ void testDisplay(){
   #endif
 }
 
-void testDisplay_128x64(){
-  i2cDisplay.clear();
-  i2cDisplay.print("Hello world!");
-}
-
-void testDisplay_128x128(){
-  i2cDisplay.clear();
-  i2cDisplay.print("Hello world!");
-}
-
 void showBPM(float p){
   #ifdef DISPLAY_128x64
     showBPM_128x64(p);
@@ -1033,13 +1019,6 @@ void showBPM(float p){
   #ifdef DISPLAY_128x128
     showBPM_128x128(p);
   #endif
-}
-
-
-
-//2DO
-void showBPM_128x128(float p){
-
 }
 
 
@@ -1058,10 +1037,6 @@ void showStatus_128x64(int iMeasure, bool pInverted){
   bUpdateStatusDisplay = true;
 }
 
-//2Do
-void showStatus_128x128(int iMeasure, bool pInverted){
-
-}
 
 void showInfo(int pWaitMS){
   #ifdef DISPLAY_128x64
@@ -1074,12 +1049,6 @@ void showInfo(int pWaitMS){
 }
 
 
-
-//2Do
-void showInfo_128x128(int pWaitMS){
-  delay(pWaitMS);
-}
-
 void showUpdateInfo(){
   #ifdef DISPLAY_128x64
    showUpdateInfo_128x64();
@@ -1090,12 +1059,6 @@ void showUpdateInfo(){
   #endif
 }
 
-
-
-//2Do
-void showUpdateInfo_128x128(){
-
-}
 
 void nudgePlus(bool pOnOff){
   if(pOnOff){
@@ -1129,6 +1092,12 @@ void nudgeMinus(bool pOnOff){
 }
 
 #ifdef DISPLAY_128x64
+
+void testDisplay_128x64(){
+  i2cDisplay.clear();
+  i2cDisplay.print("Hello world!");
+}
+
 void updateStatusDisplay_128x64(){
   if( !bQRSChange ){
     showBPM(fBPM_Cache);
@@ -1247,4 +1216,61 @@ void showBPM_128x64(float p){
   }
   i2cDisplay.print( String(p) );
 }
+#endif
+
+
+#ifdef DISPLAY_128x128
+  void testDisplay_128x128(){
+    i2cDisplay.clear();
+    i2cDisplay.drawString(0, 0, "ClockBox");
+    i2cDisplay.draw1x2String(0, 2, "ClockBox");
+    i2cDisplay.draw2x2String(0, 6, "JKL");
+    //-------------------------------
+    i2cDisplay.clearLine(0);
+    i2cDisplay.setFont(u8x8_font_px437wyse700b_2x2_r);
+    i2cDisplay.drawString(0, 0, "ClockBox");
+    i2cDisplay.draw1x2String(0, 2, "ClockBox");
+    i2cDisplay.drawString(0, 6, "v.3.26");
+    delay(2000);
+    i2cDisplay.clearLine(0);
+    i2cDisplay.draw1x2String(0, 0, "ClockBox");
+    i2cDisplay.drawString(0, 2, "ClockBox");
+    i2cDisplay.drawString(0, 6, "v.3.26");
+    delay(2000);
+  }
+
+  //2DO
+  void updateStatusDisplay_128x128(){
+
+  }
+  //2Do
+  void displaySelectedPreset_128x128(String p){
+
+  }
+
+  //2DO
+  void showBPM_128x128(float p){
+
+  }
+
+  //2Do
+  void showStatus_128x128(int iMeasure, bool pInverted){
+
+  }
+
+  //2Do
+  void showInfo_128x128(int pWaitMS){
+    i2cDisplay.clear();
+    i2cDisplay.draw1x2String(0, 0, "ClockBox");
+    i2cDisplay.drawString(0, 3, "Version ");
+    i2cDisplay.print("  Version ");i2cDisplay.println(VERSION);
+    i2cDisplay.println();
+    i2cDisplay.println(" Andyland.info");
+    delay(pWaitMS);
+  }
+
+  //2Do
+  void showUpdateInfo_128x128(){
+
+  }
 #endif
