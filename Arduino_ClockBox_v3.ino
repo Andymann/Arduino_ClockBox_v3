@@ -264,7 +264,7 @@ void setup(){
   #ifdef DISPLAY_128x128
     i2cDisplay.begin();
     i2cDisplay.setPowerSave(0);
-    i2cDisplay.setFont(u8x8_font_px437wyse700b_2x2_r);
+    i2cDisplay.setFont(/*u8x8_font_pxplustandynewtv_r*//*u8x8_font_profont29_2x3_r*/ u8x8_font_px437wyse700b_2x2_r);
   #endif
  
   getPresetsFromEeprom();
@@ -275,7 +275,7 @@ void setup(){
   iQuantizeRestartOffset = getQRSOffsetFromEeprom();
 
 
-  showInfo(1500);
+  showInfo(2000);
   clearDisplay();
   ledOff();
 
@@ -298,7 +298,8 @@ void loop(){
   if( bFirmwareUpdateMode ){
     // Not sure if this helps but when uploading new stuff it might be
     // beneficial to not shoot midi data (via USB)
-    delay(1);
+    ledRed();
+    delay(100);
     return 0;
   }
   
@@ -1226,6 +1227,7 @@ void showBPM_128x64(float p){
     i2cDisplay.draw1x2String(0, 2, "ClockBox");
     i2cDisplay.draw2x2String(0, 6, "JKL");
     //-------------------------------
+    /*
     i2cDisplay.clearLine(0);
     i2cDisplay.setFont(u8x8_font_px437wyse700b_2x2_r);
     i2cDisplay.drawString(0, 0, "ClockBox");
@@ -1236,6 +1238,7 @@ void showBPM_128x64(float p){
     i2cDisplay.draw1x2String(0, 0, "ClockBox");
     i2cDisplay.drawString(0, 2, "ClockBox");
     i2cDisplay.drawString(0, 6, "v.3.26");
+    */
     delay(2000);
   }
 
@@ -1262,15 +1265,22 @@ void showBPM_128x64(float p){
   void showInfo_128x128(int pWaitMS){
     i2cDisplay.clear();
     i2cDisplay.draw1x2String(0, 0, "ClockBox");
-    i2cDisplay.drawString(0, 3, "Version ");
-    i2cDisplay.print("  Version ");i2cDisplay.println(VERSION);
-    i2cDisplay.println();
-    i2cDisplay.println(" Andyland.info");
+    i2cDisplay.drawString(5, 4, "v");
+    i2cDisplay.drawString(7, 4, VERSION);
+    i2cDisplay.drawString(0, 7, "Andyland");
+    //i2cDisplay.print("  Version ");i2cDisplay.println(VERSION);
+    //i2cDisplay.println();
+    //i2cDisplay.println(" Andyland.info");
+    delay(5000);
     delay(pWaitMS);
   }
 
   //2Do
   void showUpdateInfo_128x128(){
+    i2cDisplay.clear();
+    i2cDisplay.draw1x2String(0, 0, "Update");
+    i2cDisplay.draw1x2String(0, 4, "Mode");
+    delay(2000);
 
   }
 #endif
