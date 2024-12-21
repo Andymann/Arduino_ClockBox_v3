@@ -39,8 +39,8 @@
   Select which type of display will be used
 */
 
-//#define DISPLAY_128x64
-#define DISPLAY_128x128
+#define DISPLAY_128x64
+//#define DISPLAY_128x128
 
 #ifdef DISPLAY_128x64
   #include "SSD1306Ascii.h"
@@ -371,7 +371,8 @@ void loop(){
       if(muxValue[ENCODERCLICK]==0){
           fBPM_Cache += iEncoder;
         }else{
-          fBPM_Cache += iEncoder*.10;
+          //fBPM_Cache += iEncoder*.10;
+          fBPM_Cache += iEncoder*5.;
         }
         bNewBPM = true;
         setGlobalBPM( fBPM_Cache);
