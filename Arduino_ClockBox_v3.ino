@@ -103,7 +103,7 @@
 
 
 
-#define VERSION "3.27"
+#define VERSION "3.28a"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -172,8 +172,9 @@ uint8_t encoder0PosOld = 128;
 #define CLOCKMODE_FOLLOW_24PPQN_DIN 3
 #define CLOCKMODE_FOLLOW_24PPQN_USB 4
 #define CLOCKMODE_FOLLOW_STARTSTOP 5
-#define MODECOUNT 5
-uint8_t arrModes[] = {CLOCKMODE_STANDALONE_A, CLOCKMODE_STANDALONE_B, CLOCKMODE_FOLLOW_24PPQN_DIN, CLOCKMODE_FOLLOW_24PPQN_USB, CLOCKMODE_FOLLOW_STARTSTOP};
+#define CLOCKMODE_FOLLOW_BLIND_DIN 6
+#define MODECOUNT 6
+uint8_t arrModes[] = {CLOCKMODE_STANDALONE_A, CLOCKMODE_STANDALONE_B, CLOCKMODE_FOLLOW_24PPQN_DIN, CLOCKMODE_FOLLOW_24PPQN_USB, CLOCKMODE_FOLLOW_STARTSTOP, CLOCKMODE_FOLLOW_BLIND_DIN};
 
 // you can define whether clock-ticks ("0xF8") are sent continuously or only when the box is playing
 // First option might improve syncing for, e.g., Ableton and other products that adopt to midi clock rather slowly 
@@ -404,7 +405,7 @@ void loop(){
     bNewPresetSelected = false;
   }
 
-  if((iClockMode==CLOCKMODE_FOLLOW_24PPQN_DIN )||(iClockMode==CLOCKMODE_FOLLOW_STARTSTOP)){
+  if((iClockMode==CLOCKMODE_FOLLOW_24PPQN_DIN )||(iClockMode==CLOCKMODE_FOLLOW_STARTSTOP)||(iClockMode==CLOCKMODE_FOLLOW_BLIND_DIN)){
     checkMidiDIN();    
   }else if((iClockMode==CLOCKMODE_FOLLOW_24PPQN_USB )||(iClockMode==CLOCKMODE_FOLLOW_STARTSTOP)){
     checkMidiUSB();
@@ -482,18 +483,32 @@ void displaySelectedPreset(String p){
 void checkMidiDIN(){
     if (Serial1.available()>0){
       midiPacket.byte1 = Serial1.read();
-      if( midiPacket.byte1 == MIDI_CLOCK){
-        if((iClockMode==CLOCKMODE_FOLLOW_24PPQN_DIN )||(iClockMode==CLOCKMODE_FOLLOW_24PPQN_USB)){
-          processIncomingClock();
+      if(iClockMode==CLOCKMODE_FOLLOW_BLIND_DIN){
+        if((midiPacket.byte1==MIDI_CLOCK)||(midiPacket.byte1==MIDI_START)||(midiPacket.byte1==MIDI_STOP)){
+          ledPurple();
+          // no Processing. soimple passthru of incoming data
+          midiEventPacket_t p = {0x0F, midiPacket.byte1, 0, 0};
+          MidiUSB.sendMIDI(p);
+          MidiUSB.flush();
+          Serial1.write(midiPacket.byte1);
+          ledOff();
         }
-      }else if (midiPacket.byte1 == MIDI_START){
-        startPlaying();
-      }else if (midiPacket.byte1 == MIDI_STOP){
-        stopPlaying();
-      } else{
-        Serial1.flush();
+        
+      }else{
+        if( midiPacket.byte1 == MIDI_CLOCK){
+          if((iClockMode==CLOCKMODE_FOLLOW_24PPQN_DIN )||(iClockMode==CLOCKMODE_FOLLOW_24PPQN_USB)){
+            processIncomingClock();
+          }
+        }else if (midiPacket.byte1 == MIDI_START){
+          startPlaying();
+        }else if (midiPacket.byte1 == MIDI_STOP){
+          stopPlaying();
+        } else{
+          Serial1.flush();
+        }
       }
-    }
+
+    }  
 }
 
 
@@ -628,7 +643,7 @@ void sendMidiClock(){
     MidiUSB.sendMIDI(p);
     MidiUSB.flush();
     Serial1.write(MIDI_CLOCK);
-  }else if(iClockMode==CLOCKMODE_FOLLOW_24PPQN_DIN ){
+  }else if((iClockMode==CLOCKMODE_FOLLOW_24PPQN_DIN )||(CLOCKMODE_FOLLOW_BLIND_DIN)){
     MidiUSB.sendMIDI(p);
     MidiUSB.flush();
     Serial1.write(MIDI_CLOCK);
@@ -650,6 +665,10 @@ void sendMidiStart(){
     Serial1.write(MIDI_START);
   }else if(iClockMode == CLOCKMODE_FOLLOW_24PPQN_USB){
     Serial1.write(MIDI_START);
+  }else if(iClockMode == CLOCKMODE_FOLLOW_STARTSTOP){
+    MidiUSB.sendMIDI(p);
+    MidiUSB.flush();
+    Serial1.write(MIDI_START);
   }
 }
 
@@ -664,6 +683,10 @@ void sendMidiStop(){
     MidiUSB.flush();
     Serial1.write(MIDI_STOP);
   }else if(iClockMode == CLOCKMODE_FOLLOW_24PPQN_USB){
+    Serial1.write(MIDI_STOP);
+  }else if(iClockMode == CLOCKMODE_FOLLOW_STARTSTOP){
+    MidiUSB.sendMIDI(p);
+    MidiUSB.flush();
     Serial1.write(MIDI_STOP);
   }
 }
@@ -912,6 +935,14 @@ void ledRed(){
     pixels.show();
 }
 
+void ledPurple(){
+  pixels.clear();
+  for(int i=0;i<NUM_LEDS; i++){
+    pixels.setPixelColor(i, pixels.Color(LED_ON, LED_OFF, LED_ON));
+  }
+    pixels.show();
+}
+
 void ledInit(){
   pixels.clear();
   for(int i=0; i<NUM_LEDS; i++){
@@ -1142,6 +1173,10 @@ void updateStatusDisplay_128x64(){
       i2cDisplay.setCol(10);
       i2cDisplay.setInvertMode( false );
       i2cDisplay.print("ext. StartStop");
+    }else if(iClockMode==CLOCKMODE_FOLLOW_BLIND_DIN ){
+      i2cDisplay.setCol(10);
+      i2cDisplay.setInvertMode( false );
+      i2cDisplay.print("BLIND follow DIN");
     }
   }else{
     // bQRSChange = true
