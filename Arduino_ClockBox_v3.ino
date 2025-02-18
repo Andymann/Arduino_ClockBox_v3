@@ -103,7 +103,7 @@
 
 
 
-#define VERSION "3.26"
+#define VERSION "3.27"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -893,7 +893,9 @@ void ledGreen(){
 
 void ledShowTick(){
   pixels.clear();
-  pixels.setPixelColor(NUM_LEDS-1, pixels.Color(7, 4, LED_OFF));
+  for(int i=0;i<NUM_LEDS; i++){
+    pixels.setPixelColor(i, pixels.Color(7, 4, LED_OFF));
+  }
   pixels.show();
 }
 
