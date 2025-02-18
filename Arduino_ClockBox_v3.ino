@@ -39,8 +39,8 @@
   Select which type of display will be used
 */
 
-//#define DISPLAY_128x64
-#define DISPLAY_128x128
+#define DISPLAY_128x64
+//define DISPLAY_128x128
 
 #ifdef DISPLAY_128x64
   #include "SSD1306Ascii.h"
@@ -103,7 +103,7 @@
 
 
 
-#define VERSION "3.25"
+#define VERSION "3.26"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -382,7 +382,7 @@ void loop(){
           iQuantizeRestartOffset += iEncoder;
         }
       }else if(iEncoder > 0){
-        if(iQuantizeRestartOffset<INTERNAL_PPQN-1){
+        if(iQuantizeRestartOffset<(4*INTERNAL_PPQN)-1){
           iQuantizeRestartOffset += iEncoder;
         }
       }
