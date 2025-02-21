@@ -138,8 +138,6 @@ Button2 btnHelper_PRESET1;
 Button2 btnHelper_PRESET2;
 Button2 btnHelper_PRESET3;
 
-//SoftwareSerial midi(16, A3); // rx, tx
-
 uint8_t bpm_blink_timer = 1;
 float fBPM_Cache = 94.0;
 float fBPM_Sysex;
@@ -175,8 +173,6 @@ uint8_t encoder0PosOld = 128;
 #define CLOCKMODE_FOLLOW_24PPQN_USB 4
 #define CLOCKMODE_FOLLOW_STARTSTOP_DIN 5
 #define CLOCKMODE_FOLLOW_STARTSTOP_USB 6
-//#define CLOCKMODE_PASSIVE_CLOCK_FILTER_DIN 7
-//#define CLOCKMODE_PASSIVE_CLOCK_FILTER_USB 8
 #define MODECOUNT 6
 uint8_t arrModes[] = { CLOCKMODE_STANDALONE_A, CLOCKMODE_STANDALONE_B, CLOCKMODE_FOLLOW_24PPQN_DIN, CLOCKMODE_FOLLOW_24PPQN_USB, CLOCKMODE_FOLLOW_STARTSTOP_DIN, CLOCKMODE_FOLLOW_STARTSTOP_USB /*, CLOCKMODE_PASSIVE_CLOCK_FILTER_DIN, CLOCKMODE_PASSIVE_CLOCK_FILTER_USB*/ };
 
@@ -188,7 +184,7 @@ uint8_t arrModes[] = { CLOCKMODE_STANDALONE_A, CLOCKMODE_STANDALONE_B, CLOCKMODE
 uint8_t iClockBehaviour = SENDCLOCK_ALWAYS;
 uint8_t iClockMode;
 
-byte muxValue[] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };  // The value of the Buttons as read from the multiplexer
+bool muxValue[] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };  // The value of the Buttons as read from the multiplexer
 
 midiEventPacket_t midiPacket;
 
@@ -998,30 +994,7 @@ void preset1ClickHandler(Button2& btn) {
   }
 }
 
-void preset1LongClickDetected(Button2& btn) {
-  if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B)||(iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN)) {
-    fBPM_Preset1 = tapTempo.getBPM();
-    EEPROM.update(MEMLOC_PRESET_1, byte(fBPM_Preset1));
-    ledRed();
-  }
-}
 
-
-void preset1ChangeHandler(Button2& btn) {
-  if ((iClockMode == CLOCKMODE_FOLLOW_24PPQN_DIN) || (iClockMode == CLOCKMODE_FOLLOW_24PPQN_USB)) {
-    //if(!bNudgeActive){
-    nudgeMinus(btn.isPressed());
-    //}
-  }
-}
-
-void preset3ChangeHandler(Button2& btn) {
-  if ((iClockMode == CLOCKMODE_FOLLOW_24PPQN_DIN) || (iClockMode == CLOCKMODE_FOLLOW_24PPQN_USB)) {
-    //if(!bNudgeActive){
-    nudgePlus(btn.isPressed());
-    //}
-  }
-}
 
 byte preset2ButtonStateHandler() {
   bool b = muxValue[PRESETBUTTON2] || muxValue[PRESETSWITCH2];
@@ -1047,13 +1020,6 @@ void preset2ClickHandler(Button2& btn) {
   }
 }
 
-void preset2LongClickDetected(Button2& btn) {
-  if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B)||(iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN)||(iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_USB)) {
-    fBPM_Preset2 = tapTempo.getBPM();
-    EEPROM.update(MEMLOC_PRESET_2, byte(fBPM_Preset2));
-    ledRed();
-  }
-}
 
 byte preset3ButtonStateHandler() {
   bool b = muxValue[PRESETBUTTON3] || muxValue[PRESETSWITCH3];
@@ -1078,23 +1044,6 @@ void preset3ClickHandler(Button2& btn) {
   }
 }
 
-void preset3LongClickDetected(Button2& btn) {
-  if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B)||(iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN)) {
-    fBPM_Preset3 = tapTempo.getBPM();
-    EEPROM.update(MEMLOC_PRESET_3, byte(fBPM_Preset3));
-    ledRed();
-  }
-}
-
-void ledIndicateStart() {
-  if (bIsPlaying) {
-    pixels.clear();
-    for (int i = 0; i < NUM_LEDS; i++) {
-      pixels.setPixelColor(i, pixels.Color(LED_OFF, LED_ON * .5, LED_OFF));
-    }
-    pixels.show();
-  }
-}
 
 void setGlobalBPM(float f) {
   //iUpdateDisplayMode = DISPLAYUPDATE_ALL;
@@ -1147,8 +1096,6 @@ void ledOra(uint8_t pPixel) {
   }
   pixels.show();
 }
-
-
 
 void ledOff() {
   pixels.clear();
@@ -1512,7 +1459,7 @@ void showUpdateInfo_128x64() {
   i2cDisplay.set2X();
   i2cDisplay.println("ClockBox");
   i2cDisplay.set1X();
-  i2cDisplay.println();  //("  Version ");i2cDisplay.println(VERSION);
+  i2cDisplay.println();
   i2cDisplay.println();
   i2cDisplay.println("   UpdateMode");
 }
@@ -1541,8 +1488,6 @@ void showModeResetInfo_128x64(int pMS) {
 void showModeResetInfo_128x128(int pMS) {
   // tbd
 }
-
-
 #endif
 
 
