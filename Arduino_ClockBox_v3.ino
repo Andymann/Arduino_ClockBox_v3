@@ -24,9 +24,6 @@
 #include <EEPROM.h>
 #include <Wire.h>
 
-#include "MovingAverage.h"
-#include <math.h>
-
 /*
     SELECT WHICH HARDWARE WILL BE USED
 */
@@ -38,8 +35,8 @@
   Select which type of display will be used
 */
 
-#define DISPLAY_128x64
-//#define DISPLAY_128x128
+//#define DISPLAY_128x64
+#define DISPLAY_128x128
 
 #ifdef DISPLAY_128x64
 #include "SSD1306Ascii.h"
@@ -102,7 +99,7 @@ U8X8_SH1107_SEEED_128X128_HW_I2C i2cDisplay(/* reset=*/U8X8_PIN_NONE);
 
 
 
-#define VERSION "3.30"
+#define VERSION "3.31"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -122,7 +119,6 @@ Adafruit_NeoPixel pixels(NUM_LEDS, DATA_PIN, NEO_GRB + NEO_KHZ800);
 #define INTERNAL_PPQN 24  // needs to be 24 for CV/ Gate to work properly
 
 uint8_t iQuantizeRestartOffset;  // Damit ein restart echt mega genau ankommt; test per Ableton Metronom: //94 sweet spot.
-#define LONGCLICKTIMEMS 2000
 
 #define NEXTPRESET_NONE 0
 #define NEXTPRESET_1 1
@@ -158,9 +154,6 @@ uint8_t DISPLAYUPDATE_BLINKER_OFF = 3;
 uint8_t DISPLAYUPDATE_BPM = 4;
 uint8_t iUpdateDisplayMode = DISPLAYUPDATE_NONE;
 
-String sActivePreset = "AAAAAAAAAAAAAA";
-
-
 bool encoder0PinALast = false;
 bool encoder0PinBLast = false;
 uint8_t encoder0Pos = 128;
@@ -194,7 +187,6 @@ bool bDisplayBlinker = false;
 bool bStaticContentDrawnOnce = false;
 
 void setup() {
-
   iNextPreset = NEXTPRESET_NONE;
   Serial1.begin(31250);
   pixels.begin();
