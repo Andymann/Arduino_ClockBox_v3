@@ -525,11 +525,11 @@ void checkMidiUSB() {
     if(countTick(2) == 1){
       tapTempo.update(true);
       if(bIsPlaying){
-        ledOra();
+        ledOra(100);
       }
        iUpdateDisplayMode = DISPLAYUPDATE_BLINKER_ON;
     }
-    
+
     if(countTick(2) == 12){
       ledOff();
       iUpdateDisplayMode = DISPLAYUPDATE_BLINKER_OFF;
@@ -588,10 +588,11 @@ void checkMidiDIN() {
     }
 
     // for the TICKS and the LEDs
+
     if(countTick(2) == 1){
       tapTempo.update(true);
       if(bIsPlaying){
-        ledOra();
+        //ledOra();
       }
        iUpdateDisplayMode = DISPLAYUPDATE_BLINKER_ON;
     }
@@ -600,6 +601,40 @@ void checkMidiDIN() {
       ledOff();
       iUpdateDisplayMode = DISPLAYUPDATE_BLINKER_OFF;
     }
+
+    if(iTickCounter==6){
+      if(bIsPlaying)
+      ledOra(4);
+    }
+    if(iTickCounter==12){
+      if(bIsPlaying)
+      ledOra(3);
+    }
+    if(iTickCounter==18){
+      if(bIsPlaying)
+      ledOra(2);
+    }
+    if(iTickCounter==24){
+      if(bIsPlaying)
+      ledOra(1);
+    }
+
+    if(iTickCounter==30){
+      if(bIsPlaying)
+      ledOra(2);
+    }
+
+    if(iTickCounter==36){
+      if(bIsPlaying)
+      ledOra(3);
+    }
+
+    if(iTickCounter==42){
+      if(bIsPlaying)
+      ledOra(4);
+    }
+     
+
   }else if(iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN){
     if (Serial1.available() > 0) {
       midiPacket.byte1 = Serial1.read();
@@ -1104,6 +1139,16 @@ void ledOra() {
   }
   pixels.show();
 }
+
+void ledOra(uint8_t pPixel) {
+  pixels.clear();
+  for(uint8_t i=0; i<pPixel; i++){
+    pixels.setPixelColor(i, pixels.Color(7, 4, LED_OFF));
+  }
+  pixels.show();
+}
+
+
 
 void ledOff() {
   pixels.clear();
