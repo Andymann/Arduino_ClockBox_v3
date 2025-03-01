@@ -35,8 +35,8 @@
   Select which type of display will be used
 */
 
-//#define DISPLAY_128x64
-#define DISPLAY_128x128
+#define DISPLAY_128x64
+//#define DISPLAY_128x128
 
 #ifdef DISPLAY_128x64
 #include "SSD1306Ascii.h"
@@ -99,7 +99,7 @@ SSD1306AsciiWire i2cDisplay;
 
 
 
-#define VERSION "3.31"
+#define VERSION "3.32"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -740,15 +740,20 @@ void sendMidiStop() {
 
 void handleClockTick(uint32_t tick) {
   if (bQuantizeRestartWaiting == true) {
-    if ((tick % (INTERNAL_PPQN * 4) == (INTERNAL_PPQN - iQuantizeRestartOffset))) {
-      bQuantizeRestartWaiting = false;
+    if ((tick % (INTERNAL_PPQN * 4) == (INTERNAL_PPQN*4 - iQuantizeRestartOffset))) {
       if (iClockMode == CLOCKMODE_STANDALONE_B) {
         sendMidiStop();
       }
+    }
+
+    //send midi Start on the one
+    if (tick % (INTERNAL_PPQN * 4)==0){
       if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_USB)) {
         sendMidiStart();
+        bQuantizeRestartWaiting = false;
       }
     }
+    
   }
 
   // at the beginning or on every downbeat
@@ -1316,13 +1321,17 @@ void updateDisplay_128x64(bool pClearAll, bool pBLinkerOnOff, bool pClearBPM) {
       i2cDisplay.print("  ");
     }
   } else if (iConfigChangeMode == CONFIGCHANGE_QRS) {
-    i2cDisplay.setFont(ZevvPeep8x16);
-    i2cDisplay.setInvertMode(false);
-    i2cDisplay.set1X();
-    i2cDisplay.setRow(0);
-    i2cDisplay.print("QRS Offset:");
-    i2cDisplay.setRow(3);
-    i2cDisplay.set2X();
+    if (bStaticContentDrawnOnce == false) {
+      i2cDisplay.setFont(ZevvPeep8x16);
+      i2cDisplay.setInvertMode(false);
+      i2cDisplay.set1X();
+      i2cDisplay.setRow(0);
+      i2cDisplay.print("QRS Offset:");
+      i2cDisplay.setRow(3);
+      i2cDisplay.set2X();
+      bStaticContentDrawnOnce = true;
+    }
+    
     if (iQuantizeRestartOffset < 100) {
       i2cDisplay.setCol(30);
     } else {
