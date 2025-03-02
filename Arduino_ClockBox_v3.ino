@@ -14,7 +14,7 @@
 
     
 */
-//U8X8_SH1107_SEEED_128X128_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE);
+
 #include <light_CD74HC4067.h>
 #include "TapTempo.h"  // Note the quotation marks. Because it's in the same folder as the code itself. Get it, e.g. from https://github.com/Andymann/ArduinoTapTempo
 #include <uClock.h>
@@ -36,7 +36,7 @@
 */
 
 #define DISPLAY_128x64
-//#define DISPLAY_128x128
+
 
 #ifdef DISPLAY_128x64
 #include "SSD1306Ascii.h"
@@ -45,19 +45,6 @@
 #define DISPLAY_I2C_ADDRESS 0x3C
 SSD1306AsciiWire i2cDisplay;
 #endif
-
-#ifdef DISPLAY_128x128
-  #include <U8x8lib.h>
-  #ifdef U8X8_HAVE_HW_SPI
-    #include <SPI.h>
-  #endif
-
-  #ifdef U8X8_HAVE_HW_I2C
-    #include <Wire.h>
-  #endif
-  U8X8_SH1107_SEEED_128X128_HW_I2C i2cDisplay(/* reset=*/U8X8_PIN_NONE);
-#endif
-
 
 
 #ifdef V3_PROTOBOARD
@@ -226,11 +213,6 @@ void setup() {
   i2cDisplay.begin(&Adafruit128x64, DISPLAY_I2C_ADDRESS);
 #endif
 
-#ifdef DISPLAY_128x128
-  i2cDisplay.begin();
-  i2cDisplay.setPowerSave(0);
-  i2cDisplay.setFont(/*u8x8_font_pxplustandynewtv_r*/ /*u8x8_font_profont29_2x3_r*/ u8x8_font_px437wyse700b_2x2_r);
-#endif
 
   getPresetsFromEeprom();
   iClockMode = getModeFromEeprom();
@@ -279,9 +261,6 @@ void updateDisplay(bool pClearAll, bool pBLinkerOnOff, bool pClearBPM) {
   updateDisplay_128x64(pClearAll, pBLinkerOnOff, pClearBPM);
 #endif
 
-#ifdef DISPLAY_128x128
-  updateDisplay_128x128(pClearAll, pBLinkerOnOff, pClearBPM);
-#endif
 }
 
 const uint8_t CONFIGCHANGE_NONE = 0;
@@ -1080,10 +1059,6 @@ void clearDisplay() {
   bStaticContentDrawnOnce = false;
 #endif
 
-#ifdef DISPLAY_128x128
-  i2cDisplay.clear();
-  bStaticContentDrawnOnce = false;
-#endif
 }
 
 void showInfo(int pWaitMS) {
@@ -1091,9 +1066,6 @@ void showInfo(int pWaitMS) {
   showInfo_128x64(pWaitMS);
 #endif
 
-#ifdef DISPLAY_128x128
-  showInfo_128x128(pWaitMS);
-#endif
 }
 
 
@@ -1102,9 +1074,6 @@ void showUpdateInfo() {
   showUpdateInfo_128x64();
 #endif
 
-#ifdef DISPLAY_128x128
-  showUpdateInfo_128x128();
-#endif
 }
 
 
@@ -1145,9 +1114,6 @@ void showModeResetInfo(int pMS) {
   showModeResetInfo_128x64(pMS);
 #endif
 
-#ifdef DISPLAY_128x128
-  showModeResetInfo_128x128(pMS);
-#endif
 }
 
 
@@ -1347,68 +1313,5 @@ void showModeResetInfo_128x64(int pMS) {
   i2cDisplay.println();
   i2cDisplay.println("ClockMode reset");
   delay(pMS);
-}
-
-#endif
-
-
-#ifdef DISPLAY_128x128
-
-void updateDisplay_128x128(bool pClearAll, bool pBLinkerOnOff, bool pClearBPM) {
-  uint8_t iRow = 0;
-  uint8_t iCol = 0;
-  if (pClearAll == true) {
-    clearDisplay();
-  }
-  if ((iConfigChangeMode == CONFIGCHANGE_NONE) || (iConfigChangeMode == CONFIGCHANGE_MODE)) {
-    if (iClockMode == CLOCKMODE_STANDALONE_A) {
-      // BPM
-      i2cDisplay.setInverseFont(false);
-
-      if (fBPM_Cache < 100) {
-        iCol = 3;
-      } else {
-        iCol = 6;
-      }
-      char result[3];
-      dtostrf(fBPM_Cache, 3, 0, result);
-      i2cDisplay.drawString(iCol, iRow, result);
-
-
-      i2cDisplay.drawString(0, 11, "QRSStart");
-      i2cDisplay.setInverseFont(pBLinkerOnOff);
-      i2cDisplay.draw1x2String(14, 0, " ");
-    }
-  }
-}
-
-
-void showModeResetInfo_128x128(int pMS) {
-  i2cDisplay.clear();
-  //i2cDisplay.drawString(0, 0, "Andyland");
-  i2cDisplay.draw1x2String(0, 0 /*3*/, "ClockBox");
-  i2cDisplay.draw1x2String(0, 6, "Clock Mode");
-  i2cDisplay.draw1x2String(0, 11, "Reset");
-  delay(pMS);
-}
-
-//2Do
-void showInfo_128x128(int pWaitMS) {
-  i2cDisplay.clear();
-  i2cDisplay.drawString(0, 0, "Andyland");
-  i2cDisplay.draw1x2String(0, 3, "ClockBox");
-  i2cDisplay.drawString(3, 7, "v");
-  i2cDisplay.drawString(5, 7, VERSION);
-  delay(pWaitMS);
-}
-
-//2Do
-void showUpdateInfo_128x128() {
-  i2cDisplay.clear();
-  //i2cDisplay.drawString(0, 0, "Andyland");
-  i2cDisplay.draw1x2String(0, 0, "ClockBox");
-  i2cDisplay.draw1x2String(0, 7, "Update");
-  i2cDisplay.draw1x2String(0, 11, "Mode");
-  delay(2000);
 }
 #endif
