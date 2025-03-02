@@ -86,7 +86,7 @@ SSD1306AsciiWire i2cDisplay;
 
 
 
-#define VERSION "3.33a"
+#define VERSION "3.33b"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -105,7 +105,7 @@ Adafruit_NeoPixel pixels(NUM_LEDS, DATA_PIN, NEO_GRB + NEO_KHZ800);
 
 #define INTERNAL_PPQN 24  // needs to be 24 for CV/ Gate to work properly
 
-uint8_t iQuantizeRestartOffset;  // Damit ein restart echt mega genau ankommt; test per Ableton Metronom: //94 sweet spot.
+uint8_t iQuantizeRestartOffset;  // Damit ein restart sehr genau ankommt; test per Ableton Metronom: 2 ist sweet spot, 24 sendet stop auf der '3'
 
 #define NEXTPRESET_NONE 0
 #define NEXTPRESET_1 1
@@ -503,6 +503,9 @@ void checkMidiUSB() {
   }
 }
 
+
+// uClock does NOT run in this mode. Clock data are passed thru, LED pattern is handled by counting and processing impulses.
+// no tapTempo.update() since we do no show the BPM because processing and displaying potentially costs already sparse resources.
 void checkMidiDIN() {
   if (iConfigChangeMode != CONFIGCHANGE_NONE) {
     return;
@@ -805,7 +808,6 @@ void stopPlaying(bool pSendMidi) {
     sendMidiStop();
   }
   ledOff();
-  //  showStatus(iMeasureCount + 1, false);
   if (iClockBehaviour == SENDCLOCK_WHENPLAYING) {
     uClock.stop();
   }
@@ -1276,7 +1278,7 @@ void updateDisplay_128x64(bool pClearAll, bool pBLinkerOnOff, bool pClearBPM) {
       i2cDisplay.setInvertMode(false);
       i2cDisplay.set1X();
       i2cDisplay.setRow(0);
-      i2cDisplay.print("QRS Offset:");
+      i2cDisplay.print("QRS Offset(PPQN):");
       i2cDisplay.setRow(3);
       i2cDisplay.set2X();
       bStaticContentDrawnOnce = true;
