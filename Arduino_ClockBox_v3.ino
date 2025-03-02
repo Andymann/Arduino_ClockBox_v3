@@ -99,7 +99,7 @@ SSD1306AsciiWire i2cDisplay;
 
 
 
-#define VERSION "3.32"
+#define VERSION "3.33"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -550,49 +550,24 @@ void checkMidiDIN() {
       return;
     }
 
-    if (countTick(2) == 1) {
-      tapTempo.update(true);
-      if (bIsPlaying) {
-        //ledOra();
+   
+
+    if (midiPacket.byte1 == MIDI_CLOCK) {
+
+      if ((iTickCounter == 0) || (iTickCounter == 24) || (iTickCounter == 48) || (iTickCounter == 72)) {
+        iUpdateDisplayMode = DISPLAYUPDATE_BLINKER_ON;
       }
-      iUpdateDisplayMode = DISPLAYUPDATE_BLINKER_ON;
-    }
 
-    if (countTick(2) == 12) {
-      ledOff();
-      iUpdateDisplayMode = DISPLAYUPDATE_BLINKER_OFF;
-    }
+      if ((iTickCounter == 8) || (iTickCounter == 32) || (iTickCounter == 56) || (iTickCounter == 80)) {
+        iUpdateDisplayMode = DISPLAYUPDATE_BLINKER_OFF;
+      }
 
-    if (iTickCounter == 6) {
-      if (bIsPlaying)
-        ledOra(4);
-    }
-    if (iTickCounter == 12) {
-      if (bIsPlaying)
-        ledOra(3);
-    }
-    if (iTickCounter == 18) {
-      if (bIsPlaying)
-        ledOra(2);
-    }
-    if (iTickCounter == 24) {
-      if (bIsPlaying)
-        ledOra(1);
-    }
-
-    if (iTickCounter == 30) {
-      if (bIsPlaying)
-        ledOra(2);
-    }
-
-    if (iTickCounter == 36) {
-      if (bIsPlaying)
-        ledOra(3);
-    }
-
-    if (iTickCounter == 42) {
-      if (bIsPlaying)
-        ledOra(4);
+      if (iTickCounter > INTERNAL_PPQN*4 -1) {
+        iTickCounter = 0;
+      } else {
+        iTickCounter++;
+      }
+      handleLED(iTickCounter);
     }
 
 
@@ -678,7 +653,6 @@ uint8_t countTick(uint8_t pMultiplier) {
   return iTickCounter;
 }
 
-
 void sendMidiClock() {
   midiEventPacket_t p = { 0x0F, MIDI_CLOCK, 0, 0 };
   if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B)) {
@@ -756,6 +730,19 @@ void handleClockTick(uint32_t tick) {
     
   }
 
+  //CV Gate out
+  if (!(tick % 6)) {
+    digitalWrite(SYNC_TX_PIN, true);
+  }
+
+  if (!((tick - 1) % 6)) {
+    digitalWrite(SYNC_TX_PIN, false);
+  }
+
+  handleLED(tick);
+}
+
+void handleLED(uint32_t tick){
   // at the beginning or on every downbeat
   if ((tick == 1) || (!(tick % (INTERNAL_PPQN * 4)))) {
     bpm_blink_timer = 12;
@@ -776,16 +763,8 @@ void handleClockTick(uint32_t tick) {
       iUpdateDisplayMode = DISPLAYUPDATE_BLINKER_OFF;
     }
   }
-
-  //CV Gate out
-  if (!(tick % 6)) {
-    digitalWrite(SYNC_TX_PIN, true);
-  }
-
-  if (!((tick - 1) % 6)) {
-    digitalWrite(SYNC_TX_PIN, false);
-  }
 }
+
 
 void tapHandler(Button2& btn) {
   if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_USB)) {
