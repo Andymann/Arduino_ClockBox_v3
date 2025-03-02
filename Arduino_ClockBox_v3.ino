@@ -99,7 +99,7 @@ SSD1306AsciiWire i2cDisplay;
 
 
 
-#define VERSION "3.33"
+#define VERSION "3.33a"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -492,19 +492,24 @@ void checkMidiUSB() {
       return;
     }
 
-    // for the TICKS and the LEDs
-    if (countTick(2) == 1) {
-      tapTempo.update(true);
-      if (bIsPlaying) {
-        ledOra(100);
+    if (midiPacket.byte1 == MIDI_CLOCK) {
+
+      if ((iTickCounter == 0) || (iTickCounter == 24) || (iTickCounter == 48) || (iTickCounter == 72)) {
+        iUpdateDisplayMode = DISPLAYUPDATE_BLINKER_ON;
       }
-      iUpdateDisplayMode = DISPLAYUPDATE_BLINKER_ON;
+
+      if ((iTickCounter == 8) || (iTickCounter == 32) || (iTickCounter == 56) || (iTickCounter == 80)) {
+        iUpdateDisplayMode = DISPLAYUPDATE_BLINKER_OFF;
+      }
+
+      if (iTickCounter > INTERNAL_PPQN*4 -1) {
+        iTickCounter = 0;
+      } else {
+        iTickCounter++;
+      }
+      handleLED(iTickCounter);
     }
 
-    if (countTick(2) == 12) {
-      ledOff();
-      iUpdateDisplayMode = DISPLAYUPDATE_BLINKER_OFF;
-    }
   } else if (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_USB) {
 
     if (midiPacket.byte1 == MIDI_START) {
