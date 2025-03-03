@@ -86,7 +86,7 @@ SSD1306AsciiWire i2cDisplay;
 
 
 
-#define VERSION "3.33b"
+#define VERSION "3.34"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -430,10 +430,12 @@ void processModeSwitch() {
   } else if (iClockMode == CLOCKMODE_FOLLOW_24PPQN_DIN) {
     stopPlaying(true);
     uClock.stop();
+    iUpdateDisplayMode = DISPLAYUPDATE_ALL;
 
   } else if (iClockMode == CLOCKMODE_FOLLOW_24PPQN_USB) {
     stopPlaying(true);
     uClock.stop();
+    iUpdateDisplayMode = DISPLAYUPDATE_ALL;
 
   } else if ((iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_USB)) {
     if (iClockBehaviour == SENDCLOCK_ALWAYS) {
