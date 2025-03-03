@@ -86,7 +86,7 @@ SSD1306AsciiWire i2cDisplay;
 
 
 
-#define VERSION "3.36"
+#define VERSION "3.37"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -172,6 +172,13 @@ int iTickCounter = 0;
 bool bFirmwareUpdateMode = false;
 bool bDisplayBlinker = false;
 bool bStaticContentDrawnOnce = false;
+
+uint8_t iBeatCounter = 0;
+uint8_t iBeatCounter_old = 255;
+
+const float TARGET_BPM_NONE = .0;
+float fTargetBPM = TARGET_BPM_NONE;
+float fBPM_Diff = TARGET_BPM_NONE;
 
 void setup() {
   iNextPreset = NEXTPRESET_NONE;
@@ -390,6 +397,11 @@ void loop() {
     iNextPreset = NEXTPRESET_NONE;
   }
 
+  if(iBeatCounter != iBeatCounter_old){
+    nextBeat();
+    iBeatCounter_old = iBeatCounter;
+  }
+
 
   //We only update the display max once per loop to save on resources
   if (iUpdateDisplayMode != DISPLAYUPDATE_NONE) {
@@ -405,6 +417,19 @@ void loop() {
     }
 
     iUpdateDisplayMode = DISPLAYUPDATE_NONE;
+  }
+}
+
+// every quarter note. Keep resources low over here because it might silently slow down the clock
+void nextBeat(){
+  //Tempo-ease
+  if(fTargetBPM != TARGET_BPM_NONE){
+    if(abs(uClock.getTempo() - fTargetBPM)>3.){
+      setGlobalBPM( uClock.getTempo()  + fBPM_Diff/16.);
+    }else{
+      setGlobalBPM( fTargetBPM );
+      fTargetBPM = TARGET_BPM_NONE;
+    }
   }
 }
 
@@ -584,17 +609,30 @@ void checkMidiDIN() {
 }
 
 void selectPreset(uint8_t pPresetID) {
-  if (pPresetID == NEXTPRESET_1) {
-    fBPM_Cache = uint8_t(fBPM_Preset1);
-    setGlobalBPM(fBPM_Preset1);
-  } else if (pPresetID == NEXTPRESET_2) {
-    fBPM_Cache = uint8_t(fBPM_Preset2);
-    setGlobalBPM(fBPM_Preset2);
-  } else if (pPresetID == NEXTPRESET_3) {
-    fBPM_Cache = uint8_t(fBPM_Preset3);
-    setGlobalBPM(fBPM_Preset3);
+  if( !bIsPlaying ){
+    if (pPresetID == NEXTPRESET_1) {
+      fBPM_Cache = uint8_t(fBPM_Preset1);
+      setGlobalBPM(fBPM_Preset1);
+    } else if (pPresetID == NEXTPRESET_2) {
+      fBPM_Cache = uint8_t(fBPM_Preset2);
+      setGlobalBPM(fBPM_Preset2);
+    } else if (pPresetID == NEXTPRESET_3) {
+      fBPM_Cache = uint8_t(fBPM_Preset3);
+      setGlobalBPM(fBPM_Preset3);
+    }
+    iUpdateDisplayMode = DISPLAYUPDATE_ALL;
+  }else{
+    // Tempo-ease, Tempo-fade
+    if (pPresetID == NEXTPRESET_1) {
+      fTargetBPM = fBPM_Preset1;
+    } else if (pPresetID == NEXTPRESET_2) {
+      fTargetBPM = fBPM_Preset2;
+    } else if (pPresetID == NEXTPRESET_3) {
+      fTargetBPM = fBPM_Preset3;
+    }
+    fBPM_Diff = fTargetBPM - uClock.getTempo();
+    iBeatCounter = 0;
   }
-  iUpdateDisplayMode = DISPLAYUPDATE_ALL;
 }
 
 
@@ -718,6 +756,11 @@ void handleClockTick(uint32_t tick) {
   //CV Gate out
   if (!(tick % 6)) {
     digitalWrite(SYNC_TX_PIN, true);
+    if(iBeatCounter<200){
+      iBeatCounter++;
+    }else{
+      iBeatCounter=0;
+    }
   }
 
   if (!((tick - 1) % 6)) {
