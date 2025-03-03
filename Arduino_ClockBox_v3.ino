@@ -86,7 +86,7 @@ SSD1306AsciiWire i2cDisplay;
 
 
 
-#define VERSION "3.35"
+#define VERSION "3.36"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -593,10 +593,6 @@ void selectPreset(uint8_t pPresetID) {
   } else if (pPresetID == NEXTPRESET_3) {
     fBPM_Cache = uint8_t(fBPM_Preset3);
     setGlobalBPM(fBPM_Preset3);
-  }
-
-  if (!bIsPlaying) {
-    startPlaying(true);
   }
   iUpdateDisplayMode = DISPLAYUPDATE_ALL;
 }
