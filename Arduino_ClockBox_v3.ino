@@ -86,7 +86,7 @@ SSD1306AsciiWire i2cDisplay;
 
 
 
-#define VERSION "3.37"
+#define VERSION "3.38"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -1171,7 +1171,8 @@ void showInfo_128x64(int pWaitMS) {
   i2cDisplay.print("  Version ");
   i2cDisplay.println(VERSION);
   i2cDisplay.println();
-  i2cDisplay.println(" Andyland.info");
+  //i2cDisplay.println(" Andyland.info");
+  i2cDisplay.println(" socialmidi.com");
   delay(pWaitMS);
 }
 
