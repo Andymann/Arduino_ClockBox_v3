@@ -86,7 +86,7 @@ SSD1306AsciiWire i2cDisplay;
 
 
 
-#define VERSION "3.34"
+#define VERSION "3.35"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -483,7 +483,7 @@ void checkMidiUSB() {
         iUpdateDisplayMode = DISPLAYUPDATE_BLINKER_OFF;
       }
 
-      if (iTickCounter > INTERNAL_PPQN*4 -1) {
+      if (iTickCounter > INTERNAL_PPQN*4 -2) {
         iTickCounter = 0;
       } else {
         iTickCounter++;
@@ -551,7 +551,7 @@ void checkMidiDIN() {
         iUpdateDisplayMode = DISPLAYUPDATE_BLINKER_OFF;
       }
 
-      if (iTickCounter > INTERNAL_PPQN*4 -1) {
+      if (iTickCounter > INTERNAL_PPQN*4 -2) {
         iTickCounter = 0;
       } else {
         iTickCounter++;
@@ -1020,7 +1020,7 @@ uint8_t getQRSOffsetFromEeprom() {
   if (val != 255) {  // a.k.a. hier wurde schonmal etwas gespeichert
     return val;
   } else {
-    return 1;  //94; //Default, passt gut mit Ableton
+    return 1;
   }
 }
 
