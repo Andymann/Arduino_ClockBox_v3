@@ -24,12 +24,14 @@
 #include <EEPROM.h>
 #include <Wire.h>
 
+
+
 /*
     SELECT WHICH HARDWARE WILL BE USED
 */
 //#define V3_PROTOBOARD
 #define V3_PCB
-
+//#define V3_PCB_0125
 
 /*
   Select which type of display will be used
@@ -77,6 +79,24 @@ SSD1306AsciiWire i2cDisplay;
 #define ENCODERPINB 14
 #endif
 
+
+
+#ifdef V3_PCB_0125
+#include "FastShiftOut.h"
+#define TAPBUTTON 0
+#define STARTBUTTON 1
+#define STOPBUTTON 2
+#define PRESETBUTTON1 3
+#define PRESETBUTTON2 4
+#define PRESETBUTTON3 5
+#define PRESETSWITCH1 6
+#define PRESETSWITCH2 7
+#define PRESETSWITCH3 8
+#define ENCODERCLICK 12
+#define ENCODERPINA 13
+#define ENCODERPINB 14
+FastShiftOut FSO(4, 5, A1);
+#endif
 
 #define MEMLOC_PRESET_1 10
 #define MEMLOC_PRESET_2 20
