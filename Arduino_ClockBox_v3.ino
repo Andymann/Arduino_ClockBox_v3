@@ -96,6 +96,7 @@ SSD1306AsciiWire i2cDisplay;
 #define ENCODERPINA 13
 #define ENCODERPINB 14
 FastShiftOut FSO(4, 5);
+#define SYNC_START_STOP A3
 #endif
 
 #define MEMLOC_PRESET_1 10
@@ -106,7 +107,7 @@ FastShiftOut FSO(4, 5);
 
 
 
-#define VERSION "3.39b"
+#define VERSION "3.39c"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -268,9 +269,13 @@ void setup() {
 
   #ifdef V3_PCB_0125
     //FSO.write(0xFFFF);
+    //pinMode(A1, OUTPUT);
+    pinMode(A3, OUTPUT);
     digitalWrite(A1, 0);
     FSO.write16(0xFFFF);
     digitalWrite(A1,  1);
+
+    digitalWrite(SYNC_START_STOP, LOW);
   #endif
 
 }  //setup
@@ -849,6 +854,9 @@ void startPlaying(bool pSendMidi) {
     if (pSendMidi) {
       sendMidiStart();
     }
+    #ifdef V3_PCB_0125
+    sendSyncStart();
+    #endif
     uClock.start();  //if already running this causes a clock reset (-> LED handling, tick,)
   } else {
     bQuantizeRestartWaiting = true;
@@ -875,6 +883,9 @@ void stopPlaying(bool pSendMidi) {
   if (pSendMidi) {
     sendMidiStop();
   }
+  #ifdef V3_PCB_0125
+    sendSyncStop();
+  #endif
   ledOff();
   if (iClockBehaviour == SENDCLOCK_WHENPLAYING) {
     uClock.stop();
@@ -911,7 +922,15 @@ void preset1ClickHandler(Button2& btn) {
   }
 }
 
+#ifdef V3_PCB_0125
+  void sendSyncStart(){
+    digitalWrite(SYNC_START_STOP, HIGH);
+  }
 
+  void sendSyncStop(){
+    digitalWrite(SYNC_START_STOP, LOW);
+  }
+#endif
 
 byte preset2ButtonStateHandler() {
   bool b = muxValue[PRESETBUTTON2] || muxValue[PRESETSWITCH2];
