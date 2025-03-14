@@ -30,8 +30,8 @@
     SELECT WHICH HARDWARE WILL BE USED
 */
 //#define V3_PROTOBOARD
-#define V3_PCB
-//#define V3_PCB_0125
+//#define V3_PCB
+#define V3_PCB_0125
 
 /*
   Select which type of display will be used
@@ -95,7 +95,7 @@ SSD1306AsciiWire i2cDisplay;
 #define ENCODERCLICK 12
 #define ENCODERPINA 13
 #define ENCODERPINB 14
-FastShiftOut FSO(4, 5, A1);
+FastShiftOut FSO(4, 5);
 #endif
 
 #define MEMLOC_PRESET_1 10
@@ -106,7 +106,7 @@ FastShiftOut FSO(4, 5, A1);
 
 
 
-#define VERSION "3.38"
+#define VERSION "3.39b"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -265,6 +265,13 @@ void setup() {
 
   initClock();
   processModeSwitch();
+
+  #ifdef V3_PCB_0125
+    //FSO.write(0xFFFF);
+    digitalWrite(A1, 0);
+    FSO.write16(0xFFFF);
+    digitalWrite(A1,  1);
+  #endif
 
 }  //setup
 
