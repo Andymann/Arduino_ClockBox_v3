@@ -269,7 +269,7 @@ void setup() {
 
   #ifdef V3_PCB_0125
     //FSO.write(0xFFFF);
-    //pinMode(A1, OUTPUT);
+    pinMode(A1, OUTPUT);
     pinMode(A3, OUTPUT);
     digitalWrite(A1, 0);
     FSO.write16(0xFFFF);
