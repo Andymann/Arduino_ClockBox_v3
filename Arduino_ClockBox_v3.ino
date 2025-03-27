@@ -82,7 +82,7 @@ SSD1306AsciiWire i2cDisplay;
 
 
 #ifdef V3_PCB_0125
-#include "FastShiftOut.h"
+//    #include "FastShiftOut.h"
 #define TAPBUTTON 0
 #define STARTBUTTON 1
 #define STOPBUTTON 2
@@ -95,7 +95,16 @@ SSD1306AsciiWire i2cDisplay;
 #define ENCODERCLICK 12
 #define ENCODERPINA 13
 #define ENCODERPINB 14
-FastShiftOut FSO(4, 5);
+//    FastShiftOut FSO(4, 5);
+uint8_t latchPin = 19;
+uint8_t clockPin = 5;
+uint8_t dataPin = 4;
+uint8_t numOfRegisters = 2;
+byte* registerState;
+
+bool bWaitSyncStart = false;
+bool bWaitSyncStart_old = false;
+
 #define SYNC_START_STOP A3
 #endif
 
@@ -107,7 +116,7 @@ FastShiftOut FSO(4, 5);
 
 
 
-#define VERSION "3.39c"
+#define VERSION "3.40d"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -268,17 +277,60 @@ void setup() {
   processModeSwitch();
 
   #ifdef V3_PCB_0125
-    //FSO.write(0xFFFF);
-    pinMode(A1, OUTPUT);
-    pinMode(A3, OUTPUT);
-    digitalWrite(A1, 0);
-    FSO.write16(0xFFFF);
-    digitalWrite(A1,  1);
+    pinMode(SYNC_START_STOP, OUTPUT);
+    digitalWrite(SYNC_START_STOP, LOW );
+    initShifRegisters();
+    //Midi 0: Register PIN 8
+    for(uint8_t i=0; i<16; i++){
+      shiftRegisterWrite( i, 1);
+    }
+    // Disable Sync Out 0
+    //shiftRegisterWrite( 14, 0);
 
-    digitalWrite(SYNC_START_STOP, LOW);
+    // Disable Sync Out 1
+    shiftRegisterWrite( 15, 0);
   #endif
 
 }  //setup
+
+void shiftRegisterWrite(int pin, bool state){
+	//Determines register
+	int reg = pin / 8;
+	//Determines pin for actual register
+	int actualPin = pin - (8 * reg);
+
+	//Begin session
+	digitalWrite(latchPin, LOW);
+
+	for (int i = 0; i < numOfRegisters; i++){
+		//Get actual states for register
+		byte* states = &registerState[i];
+
+		//Update state
+		if (i == reg){
+			bitWrite(*states, actualPin, state);
+		}
+
+		//Write
+		shiftOut(dataPin, clockPin, MSBFIRST, *states);
+	}
+
+	//End session
+	digitalWrite(latchPin, HIGH);
+}
+
+void initShifRegisters(){
+  //Initialize array
+	registerState = new byte[numOfRegisters];
+	for (size_t i = 0; i < numOfRegisters; i++) {
+		registerState[i] = 0;
+	}
+
+	//set pins to output so you can control the shift register
+	pinMode(latchPin, OUTPUT);
+	pinMode(clockPin, OUTPUT);
+	pinMode(dataPin, OUTPUT);
+}
 
 void initClock() {
   // Inits the clock
@@ -779,6 +831,7 @@ void handleClockTick(uint32_t tick) {
     if (tick % (INTERNAL_PPQN * 4)==0){
       if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_USB)) {
         sendMidiStart();
+        sendSyncStart();
         bQuantizeRestartWaiting = false;
       }
     }
@@ -799,6 +852,18 @@ void handleClockTick(uint32_t tick) {
     digitalWrite(SYNC_TX_PIN, false);
   }
 
+  if( bWaitSyncStart){
+    // We send a pulse via TIP of SYNC_OUT_1
+    shiftRegisterWrite( 15, 1);
+    bWaitSyncStart = false;
+    bWaitSyncStart_old = true;
+  }else{
+    if(bWaitSyncStart_old == true){
+      //We do not send anything.
+      shiftRegisterWrite( 15, 0);
+      bWaitSyncStart_old = false;
+    }
+  }
   handleLED(tick);
 }
 
@@ -924,11 +989,13 @@ void preset1ClickHandler(Button2& btn) {
 
 #ifdef V3_PCB_0125
   void sendSyncStart(){
-    digitalWrite(SYNC_START_STOP, HIGH);
+    //digitalWrite(SYNC_START_STOP, HIGH);
+    //Gonna send ResetPlay with next Tick
+    bWaitSyncStart = true;
   }
 
   void sendSyncStop(){
-    digitalWrite(SYNC_START_STOP, LOW);
+    //digitalWrite(SYNC_START_STOP, LOW);
   }
 #endif
 
