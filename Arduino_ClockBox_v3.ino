@@ -116,7 +116,7 @@ bool bWaitSyncStop_old = false;
 
 
 
-#define VERSION "3.42d"
+#define VERSION "3.43"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -510,7 +510,7 @@ void loop() {
 void nextBeat(){
   //Tempo-ease
   if(fTargetBPM != TARGET_BPM_NONE){
-    if(abs(uClock.getTempo() - fTargetBPM)>3.){
+    if((abs(uClock.getTempo() - fTargetBPM)>3.) && ( bIsPlaying )){
       setGlobalBPM( uClock.getTempo()  + fBPM_Diff/16.);
     }else{
       setGlobalBPM( fTargetBPM );
