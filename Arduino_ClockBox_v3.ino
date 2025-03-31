@@ -102,8 +102,8 @@ uint8_t dataPin = 4;
 uint8_t numOfRegisters = 2;
 byte* registerState;
 
-bool bWaitSyncStart = false;
-bool bWaitSyncStart_old = false;
+bool bWaitSyncStop = false;
+bool bWaitSyncStop_old = false;
 
 #define SYNC_START_STOP A3
 #endif
@@ -116,10 +116,12 @@ bool bWaitSyncStart_old = false;
 
 
 
-#define VERSION "3.40d"
+#define VERSION "3.42d"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
+#define SYNC_TX_REG_PIN 14
+#define SYNC_STARTSTOP_REG_PIN 15
 
 CD74HC4067 mux(6, 7, 8, 9);  // create a new CD74HC4067 object with its four select lines
 
@@ -288,7 +290,7 @@ void setup() {
     //shiftRegisterWrite( 14, 0);
 
     // Disable Sync Out 1
-    shiftRegisterWrite( 15, 0);
+    shiftRegisterWrite( SYNC_STARTSTOP_REG_PIN, 0);
   #endif
 
 }  //setup
@@ -831,7 +833,7 @@ void handleClockTick(uint32_t tick) {
     if (tick % (INTERNAL_PPQN * 4)==0){
       if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_USB)) {
         sendMidiStart();
-        sendSyncStart();
+        //syncPlayheadReset();
         bQuantizeRestartWaiting = false;
       }
     }
@@ -840,7 +842,22 @@ void handleClockTick(uint32_t tick) {
 
   //CV Gate out
   if (!(tick % 6)) {
-    digitalWrite(SYNC_TX_PIN, true);
+    if( bIsPlaying ){
+      //unlike midi, sync clock is only sent when bIsPlaying
+      digitalWrite(SYNC_TX_PIN, true);
+    }else{
+      if( bWaitSyncStop){
+        // We send a pulse via tip of SYNC_OUT_1 to reset the playhead
+        // This is a little hacky since we repurposed the connectors wich are both fed by SYNC_TX_PIN and then being
+        // split at the shift register. That's why we need to set SYNC_TX_PIN to '1' in order to have the logic gate set to '1'
+        // so that SYNC_TX_PIN and SYNC_STARTSTOP_REG_PIN can be set to '1' for the timespan of a tick to reset the playhead
+        shiftRegisterWrite( SYNC_TX_REG_PIN, 0); // disable cv port for sending tempo info
+        digitalWrite(SYNC_TX_PIN, true);
+        shiftRegisterWrite( SYNC_STARTSTOP_REG_PIN, 1);
+        bWaitSyncStop = false;
+        bWaitSyncStop_old = true;
+      }
+    }
     if(iBeatCounter<200){
       iBeatCounter++;
     }else{
@@ -849,21 +866,19 @@ void handleClockTick(uint32_t tick) {
   }
 
   if (!((tick - 1) % 6)) {
-    digitalWrite(SYNC_TX_PIN, false);
-  }
-
-  if( bWaitSyncStart){
-    // We send a pulse via TIP of SYNC_OUT_1
-    shiftRegisterWrite( 15, 1);
-    bWaitSyncStart = false;
-    bWaitSyncStart_old = true;
-  }else{
-    if(bWaitSyncStart_old == true){
-      //We do not send anything.
-      shiftRegisterWrite( 15, 0);
-      bWaitSyncStart_old = false;
+    if( bIsPlaying ){
+      digitalWrite(SYNC_TX_PIN, false);
+    }else{
+      if(bWaitSyncStop_old == true){
+        //sync stop LOW
+        digitalWrite(SYNC_TX_PIN, false);
+        shiftRegisterWrite( SYNC_TX_REG_PIN, 1);
+        shiftRegisterWrite( SYNC_STARTSTOP_REG_PIN, 0);
+        bWaitSyncStop_old = false;
+      }
     }
   }
+
   handleLED(tick);
 }
 
@@ -919,9 +934,9 @@ void startPlaying(bool pSendMidi) {
     if (pSendMidi) {
       sendMidiStart();
     }
-    #ifdef V3_PCB_0125
-    sendSyncStart();
-    #endif
+    //#ifdef V3_PCB_0125
+    //syncPlayheadReset();
+    //#endif
     uClock.start();  //if already running this causes a clock reset (-> LED handling, tick,)
   } else {
     bQuantizeRestartWaiting = true;
@@ -949,7 +964,8 @@ void stopPlaying(bool pSendMidi) {
     sendMidiStop();
   }
   #ifdef V3_PCB_0125
-    sendSyncStop();
+    digitalWrite(SYNC_TX_PIN, false); // otherwise the clock leel might be stuck to '1'
+    syncPlayheadReset();
   #endif
   ledOff();
   if (iClockBehaviour == SENDCLOCK_WHENPLAYING) {
@@ -988,14 +1004,11 @@ void preset1ClickHandler(Button2& btn) {
 }
 
 #ifdef V3_PCB_0125
-  void sendSyncStart(){
-    //digitalWrite(SYNC_START_STOP, HIGH);
+  // Resets the modular device's playhead position to 1st position.
+  // Best done on STOP to accomodate for device's potential slow reaction time
+  void syncPlayheadReset(){
     //Gonna send ResetPlay with next Tick
-    bWaitSyncStart = true;
-  }
-
-  void sendSyncStop(){
-    //digitalWrite(SYNC_START_STOP, LOW);
+    bWaitSyncStop = true;
   }
 #endif
 
