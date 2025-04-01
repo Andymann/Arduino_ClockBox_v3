@@ -82,7 +82,6 @@ SSD1306AsciiWire i2cDisplay;
 
 
 #ifdef V3_PCB_0125
-//    #include "FastShiftOut.h"
 #define TAPBUTTON 0
 #define STARTBUTTON 1
 #define STOPBUTTON 2
@@ -95,7 +94,7 @@ SSD1306AsciiWire i2cDisplay;
 #define ENCODERCLICK 12
 #define ENCODERPINA 13
 #define ENCODERPINB 14
-//    FastShiftOut FSO(4, 5);
+
 uint8_t latchPin = 19;
 uint8_t clockPin = 5;
 uint8_t dataPin = 4;
@@ -186,7 +185,7 @@ uint8_t encoder0PosOld = 128;
 #define CLOCKMODE_FOLLOW_STARTSTOP_DIN 5
 #define CLOCKMODE_FOLLOW_STARTSTOP_USB 6
 #define MODECOUNT 6
-uint8_t arrModes[] = { CLOCKMODE_STANDALONE_A, CLOCKMODE_STANDALONE_B, CLOCKMODE_FOLLOW_24PPQN_DIN, CLOCKMODE_FOLLOW_24PPQN_USB, CLOCKMODE_FOLLOW_STARTSTOP_DIN, CLOCKMODE_FOLLOW_STARTSTOP_USB /*, CLOCKMODE_PASSIVE_CLOCK_FILTER_DIN, CLOCKMODE_PASSIVE_CLOCK_FILTER_USB*/ };
+uint8_t arrModes[] = { CLOCKMODE_STANDALONE_A, CLOCKMODE_STANDALONE_B, CLOCKMODE_FOLLOW_24PPQN_DIN, CLOCKMODE_FOLLOW_24PPQN_USB, CLOCKMODE_FOLLOW_STARTSTOP_DIN, CLOCKMODE_FOLLOW_STARTSTOP_USB};
 
 // you can define whether clock-ticks ("0xF8") are sent continuously or only when the box is playing
 // First option might improve syncing for, e.g., Ableton and other products that adopt to midi clock rather slowly
@@ -934,9 +933,6 @@ void startPlaying(bool pSendMidi) {
     if (pSendMidi) {
       sendMidiStart();
     }
-    //#ifdef V3_PCB_0125
-    //syncPlayheadReset();
-    //#endif
     uClock.start();  //if already running this causes a clock reset (-> LED handling, tick,)
   } else {
     bQuantizeRestartWaiting = true;
