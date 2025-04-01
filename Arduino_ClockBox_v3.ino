@@ -115,7 +115,7 @@ bool bWaitSyncStop_old = false;
 
 
 
-#define VERSION "3.43"
+#define VERSION "3.43a"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -294,6 +294,7 @@ void setup() {
 
 }  //setup
 
+#ifdef V3_PCB_0125
 void shiftRegisterWrite(int pin, bool state){
 	//Determines register
 	int reg = pin / 8;
@@ -319,7 +320,9 @@ void shiftRegisterWrite(int pin, bool state){
 	//End session
 	digitalWrite(latchPin, HIGH);
 }
+#endif
 
+#ifdef V3_PCB_0125
 void initShifRegisters(){
   //Initialize array
 	registerState = new byte[numOfRegisters];
@@ -332,6 +335,7 @@ void initShifRegisters(){
 	pinMode(clockPin, OUTPUT);
 	pinMode(dataPin, OUTPUT);
 }
+#endif
 
 void initClock() {
   // Inits the clock
@@ -845,6 +849,7 @@ void handleClockTick(uint32_t tick) {
       //unlike midi, sync clock is only sent when bIsPlaying
       digitalWrite(SYNC_TX_PIN, true);
     }else{
+      #ifdef V3_PCB_0125
       if( bWaitSyncStop){
         // We send a pulse via tip of SYNC_OUT_1 to reset the playhead
         // This is a little hacky since we repurposed the connectors wich are both fed by SYNC_TX_PIN and then being
@@ -856,6 +861,7 @@ void handleClockTick(uint32_t tick) {
         bWaitSyncStop = false;
         bWaitSyncStop_old = true;
       }
+      #endif
     }
     if(iBeatCounter<200){
       iBeatCounter++;
@@ -868,6 +874,7 @@ void handleClockTick(uint32_t tick) {
     if( bIsPlaying ){
       digitalWrite(SYNC_TX_PIN, false);
     }else{
+      #ifdef V3_PCB_0125
       if(bWaitSyncStop_old == true){
         //sync stop LOW
         digitalWrite(SYNC_TX_PIN, false);
@@ -875,6 +882,7 @@ void handleClockTick(uint32_t tick) {
         shiftRegisterWrite( SYNC_STARTSTOP_REG_PIN, 0);
         bWaitSyncStop_old = false;
       }
+      #endif
     }
   }
 
