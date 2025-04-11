@@ -115,7 +115,7 @@ bool bWaitSyncStop_old = false;
 
 
 
-#define VERSION "3.43a"
+#define VERSION "3.44a"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -898,6 +898,15 @@ void handleLED(uint32_t tick){
     iUpdateDisplayMode = DISPLAYUPDATE_BLINKER_ON;
     iMeasureCount++;
 
+    // QRS bei ClockMode_Follow. uClock laeuft nicht, deswegen der Umweg hierueber
+    if((iClockMode == CLOCKMODE_FOLLOW_24PPQN_DIN) || (iClockMode == CLOCKMODE_FOLLOW_24PPQN_USB)){ 
+      if( bQuantizeRestartWaiting){
+        sendMidiStart();
+        bQuantizeRestartWaiting = false;
+      }
+    }
+
+
   } else if (!(tick % (INTERNAL_PPQN))) {  // each quarter note //led on
     bpm_blink_timer = 8;
     ledIndicateMeasure(iMeasureCount);
@@ -928,6 +937,9 @@ void startHandler(Button2& btn) {
   if (muxValue[ENCODERCLICK] == 0) {
     if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_USB)) {
       startPlaying(true);
+    }
+    if((iClockMode == CLOCKMODE_FOLLOW_24PPQN_DIN) || (iClockMode == CLOCKMODE_FOLLOW_24PPQN_USB)){
+      bQuantizeRestartWaiting = true;
     }
   }
 }
