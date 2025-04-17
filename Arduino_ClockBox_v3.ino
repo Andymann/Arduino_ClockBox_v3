@@ -115,7 +115,7 @@ bool bWaitSyncStop_old = false;
 
 
 
-#define VERSION "3.44a"
+#define VERSION "3.45"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -184,8 +184,8 @@ uint8_t encoder0PosOld = 128;
 #define CLOCKMODE_FOLLOW_24PPQN_USB 4
 #define CLOCKMODE_FOLLOW_STARTSTOP_DIN 5
 #define CLOCKMODE_FOLLOW_STARTSTOP_USB 6
-#define MODECOUNT 6
-uint8_t arrModes[] = { CLOCKMODE_STANDALONE_A, CLOCKMODE_STANDALONE_B, CLOCKMODE_FOLLOW_24PPQN_DIN, CLOCKMODE_FOLLOW_24PPQN_USB, CLOCKMODE_FOLLOW_STARTSTOP_DIN, CLOCKMODE_FOLLOW_STARTSTOP_USB};
+#define MODECOUNT 4
+uint8_t arrModes[] = { CLOCKMODE_STANDALONE_A, CLOCKMODE_STANDALONE_B, CLOCKMODE_FOLLOW_24PPQN_DIN, CLOCKMODE_FOLLOW_24PPQN_USB};
 
 // you can define whether clock-ticks ("0xF8") are sent continuously or only when the box is playing
 // First option might improve syncing for, e.g., Ableton and other products that adopt to midi clock rather slowly
@@ -434,28 +434,14 @@ void loop() {
       //uClock.setTempo( fBPM_Cache );
     }
     checkMidiUSB();
-  } else if (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN) {
-    if (abs(tapTempo.getBPM() - fBPM_Cache) >= 1.0) {  // neue BPM
-      fBPM_Cache = uint8_t(tapTempo.getBPM());
-      uClock.setTempo(fBPM_Cache);
-      iUpdateDisplayMode = DISPLAYUPDATE_ALL;
-    }
-    checkMidiDIN();
-  } else if (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_USB) {
-    if (abs(tapTempo.getBPM() - fBPM_Cache) >= 1.0) {  // neue BPM
-      fBPM_Cache = uint8_t(tapTempo.getBPM());
-      uClock.setTempo(fBPM_Cache);
-      iUpdateDisplayMode = DISPLAYUPDATE_ALL;
-    }
-    checkMidiUSB();
-  }
+  } 
 
 
   int iEncoder = queryEncoder();
 
   if (iEncoder != 0) {
     if (iConfigChangeMode == CONFIGCHANGE_NONE) {
-      if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_USB)) {
+      if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B)) {
         if (muxValue[ENCODERCLICK] == 0) {
           // Encoder drehen
           fBPM_Cache += iEncoder;
@@ -551,11 +537,7 @@ void processModeSwitch() {
     uClock.stop();
     iUpdateDisplayMode = DISPLAYUPDATE_ALL;
 
-  } else if ((iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_USB)) {
-    if (iClockBehaviour == SENDCLOCK_ALWAYS) {
-      uClock.start();
-    }
-  }
+  } 
 }
 
 void checkMidiUSB() {
@@ -674,27 +656,7 @@ void checkMidiDIN() {
     }
 
 
-  } else if (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN) {
-    if (Serial1.available() > 0) {
-      midiPacket.byte1 = Serial1.read();
-      //Serial1.flush();
-    } else {
-      return;
-    }
-    if (midiPacket.byte1 == MIDI_START) {
-      // Do not actively send MIDI_START since this is already passed thru, just start the internal clock for displaying LED
-      // This will also reset the clock to 0 if already running
-      startPlaying(true);
-      return;
-    }
-
-    if (midiPacket.byte1 == MIDI_STOP) {
-      // Do not actively send MIDI_START since this is already passed thru, just start the internal clock for displaying LED
-      // This will also reset the clock to 0 if already running
-      stopPlaying(true);
-      return;
-    }
-  }
+  } 
 }
 
 void selectPreset(uint8_t pPresetID) {
@@ -738,7 +700,7 @@ void readMux() {
 void ClockOutPPQN(uint32_t tick) {
   // Send MIDI_CLOCK to external gears in standalone mode. Other modes to a passthru of incoming data and
   // only need the clock for displaying stuff
-  if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_USB)) {
+  if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B)) {
     sendMidiClock();
   }
   handleClockTick(tick);
@@ -773,12 +735,6 @@ void sendMidiClock() {
     Serial1.write(MIDI_CLOCK);
   } else if (iClockMode == CLOCKMODE_FOLLOW_24PPQN_USB) {
     Serial1.write(MIDI_CLOCK);
-  } else if (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN) {
-    MidiUSB.sendMIDI(p);
-    MidiUSB.flush();
-    Serial1.write(MIDI_CLOCK);
-  } else if (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_USB) {
-    Serial1.write(MIDI_CLOCK);
   }
 }
 
@@ -793,12 +749,6 @@ void sendMidiStart() {
     MidiUSB.flush();
     Serial1.write(MIDI_START);
   } else if (iClockMode == CLOCKMODE_FOLLOW_24PPQN_USB) {
-    Serial1.write(MIDI_START);
-  } else if (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN) {
-    MidiUSB.sendMIDI(p);
-    MidiUSB.flush();
-    Serial1.write(MIDI_START);
-  } else if (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_USB) {
     Serial1.write(MIDI_START);
   }
 }
@@ -815,12 +765,6 @@ void sendMidiStop() {
     Serial1.write(MIDI_STOP);
   } else if (iClockMode == CLOCKMODE_FOLLOW_24PPQN_USB) {
     Serial1.write(MIDI_STOP);
-  } else if (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN) {
-    MidiUSB.sendMIDI(p);
-    MidiUSB.flush();
-    Serial1.write(MIDI_STOP);
-  } else if (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_USB) {
-    Serial1.write(MIDI_STOP);
   }
 }
 
@@ -834,7 +778,7 @@ void handleClockTick(uint32_t tick) {
 
     //send midi Start on the one
     if (tick % (INTERNAL_PPQN * 4)==0){
-      if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_USB)) {
+      if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B) ) {
         sendMidiStart();
         //syncPlayheadReset();
         bQuantizeRestartWaiting = false;
@@ -923,7 +867,7 @@ void handleLED(uint32_t tick){
 
 
 void tapHandler(Button2& btn) {
-  if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_USB)) {
+  if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B)) {
     tapTempo.update(true);
   }
 }
@@ -935,7 +879,7 @@ byte tapButtonStateHandler() {
 
 void startHandler(Button2& btn) {
   if (muxValue[ENCODERCLICK] == 0) {
-    if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_USB)) {
+    if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B)) {
       startPlaying(true);
     }
     if((iClockMode == CLOCKMODE_FOLLOW_24PPQN_DIN) || (iClockMode == CLOCKMODE_FOLLOW_24PPQN_USB)){
@@ -967,7 +911,7 @@ byte startButtonStateHandler() {
 
 void stopHandler(Button2& btn) {
   if (muxValue[ENCODERCLICK] == 0) {
-    if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_USB)) {
+    if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B)) {
       stopPlaying(true);
     }
   }
@@ -1002,7 +946,7 @@ byte preset1ButtonStateHandler() {
 }
 
 void preset1ClickHandler(Button2& btn) {
-  if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_USB)) {
+  if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B)) {
     if (muxValue[ENCODERCLICK] == 1) {
       fBPM_Preset1 = tapTempo.getBPM();
       if (EEPROM.read(MEMLOC_PRESET_1) != byte(fBPM_Preset1)) {
@@ -1035,7 +979,7 @@ byte preset2ButtonStateHandler() {
 
 
 void preset2ClickHandler(Button2& btn) {
-  if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_USB)) {
+  if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B)) {
     if (muxValue[ENCODERCLICK] == 1) {
       fBPM_Preset2 = tapTempo.getBPM();
       if (EEPROM.read(MEMLOC_PRESET_2) != byte(fBPM_Preset2)) {
@@ -1059,7 +1003,7 @@ byte preset3ButtonStateHandler() {
 }
 
 void preset3ClickHandler(Button2& btn) {
-  if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN)) {
+  if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B)) {
     if (muxValue[ENCODERCLICK] == 1) {
       fBPM_Preset3 = tapTempo.getBPM();
       if (EEPROM.read(MEMLOC_PRESET_3) != byte(fBPM_Preset3)) {
@@ -1082,9 +1026,7 @@ void setGlobalBPM(float f) {
     tapTempo.setBPM(f);
   } else if ((iClockMode == CLOCKMODE_FOLLOW_24PPQN_DIN) || (iClockMode == CLOCKMODE_FOLLOW_24PPQN_USB)) {
     //tapTempo.setBPM(f);
-  } else if ((iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN) || (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_USB)) {
-    tapTempo.setBPM(f);
-  }
+  } 
   uClock.setTempo(f);
 }
 
@@ -1411,51 +1353,7 @@ void updateDisplay_128x64(bool pClearAll, bool pBLinkerOnOff, bool pClearBPM) {
       i2cDisplay.setCol(112);
       i2cDisplay.setInvertMode(pBLinkerOnOff);
       i2cDisplay.print("  ");
-    } else if (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_DIN) {
-      // BPM
-      i2cDisplay.setInvertMode(false);
-      i2cDisplay.setFont(Verdana_digits_24);
-      i2cDisplay.set2X();
-      i2cDisplay.setRow(0);
-      if (fBPM_Cache < 100) {
-        i2cDisplay.setCol(30);
-      } else {
-        i2cDisplay.setCol(15);
-      }
-      i2cDisplay.print(String(fBPM_Cache));
-
-      i2cDisplay.setFont(ZevvPeep8x16);
-      i2cDisplay.set1X();
-      i2cDisplay.setCol(1);
-      i2cDisplay.setRow(6);
-      i2cDisplay.print("StartStop DIN");
-      i2cDisplay.setCol(112);
-      i2cDisplay.setInvertMode(pBLinkerOnOff);
-      i2cDisplay.setRow(0);
-      i2cDisplay.print("  ");
-    } else if (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_USB) {
-      // BPM
-      i2cDisplay.setInvertMode(false);
-      i2cDisplay.setFont(Verdana_digits_24);
-      i2cDisplay.set2X();
-      i2cDisplay.setRow(0);
-      if (fBPM_Cache < 100) {
-        i2cDisplay.setCol(30);
-      } else {
-        i2cDisplay.setCol(15);
-      }
-      i2cDisplay.print(String(fBPM_Cache));
-      i2cDisplay.setInvertMode(false);
-      i2cDisplay.setFont(ZevvPeep8x16);
-      i2cDisplay.set1X();
-      i2cDisplay.setCol(1);
-      i2cDisplay.setRow(6);
-      i2cDisplay.print("StartStop USB");
-      i2cDisplay.setCol(112);
-      i2cDisplay.setInvertMode(pBLinkerOnOff);
-      i2cDisplay.setRow(0);
-      i2cDisplay.print("  ");
-    }
+    } 
   } else if (iConfigChangeMode == CONFIGCHANGE_QRS) {
     if (bStaticContentDrawnOnce == false) {
       i2cDisplay.setFont(ZevvPeep8x16);
