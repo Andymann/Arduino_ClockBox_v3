@@ -112,10 +112,11 @@ bool bWaitSyncStop_old = false;
 #define MEMLOC_PRESET_3 30
 #define MEMLOC_MODE 40
 #define MEMLOC_QRSOFFSET 50
+#define MEMLOC_CLOCKDIVIDERINDEX 60
 
 
 
-#define VERSION "3.45"
+#define VERSION "3.46"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -137,6 +138,9 @@ Adafruit_NeoPixel pixels(NUM_LEDS, DATA_PIN, NEO_GRB + NEO_KHZ800);
 #define INTERNAL_PPQN 24  // needs to be 24 for CV/ Gate to work properly
 
 uint8_t iQuantizeRestartOffset;  // Damit ein restart sehr genau ankommt; test per Ableton Metronom: 2 ist sweet spot, 24 sendet stop auf der '3'
+uint8_t iClockDividerIndex=0;
+const uint8_t CLOCKDIVIDER[] = {1, 2, 4, 8, 16, 32, 64};
+const uint8_t CLOCKDIVIDERSTEPS = 7;
 
 #define NEXTPRESET_NONE 0
 #define NEXTPRESET_1 1
@@ -255,6 +259,7 @@ void setup() {
   getPresetsFromEeprom();
   iClockMode = getModeFromEeprom();
   iQuantizeRestartOffset = getQRSOffsetFromEeprom();
+  iClockDividerIndex = getClockDividerIndexFromEeprom();
 
   readMux();
   if (muxValue[STOPBUTTON] == 1) {
@@ -362,6 +367,7 @@ void updateDisplay(bool pClearAll, bool pBLinkerOnOff, bool pClearBPM) {
 const uint8_t CONFIGCHANGE_NONE = 0;
 const uint8_t CONFIGCHANGE_MODE = 1;
 const uint8_t CONFIGCHANGE_QRS = 2;
+const uint8_t CONFIGCHANGE_CLOCKDIVIDER = 3;
 uint8_t iConfigChangeMode = CONFIGCHANGE_NONE;
 
 
@@ -398,7 +404,13 @@ void loop() {
       iConfigChangeMode = CONFIGCHANGE_QRS;
       iUpdateDisplayMode = DISPLAYUPDATE_ALL;
     }
+  } else if ((muxValue[ENCODERCLICK] == 1) && (muxValue[TAPBUTTON] == 1)) {
+    if (iConfigChangeMode == CONFIGCHANGE_NONE) {
+      iConfigChangeMode = CONFIGCHANGE_CLOCKDIVIDER;
+      iUpdateDisplayMode = DISPLAYUPDATE_ALL;
+    }
   }
+
 
   if (iConfigChangeMode != CONFIGCHANGE_NONE) {
     if ((muxValue[ENCODERCLICK] == 0) && (muxValue[STARTBUTTON] == 0) && (muxValue[STOPBUTTON] == 0)) {
@@ -409,7 +421,14 @@ void loop() {
           delay(500);
           ledOff();
         }
-      }
+      } else if (iConfigChangeMode == CONFIGCHANGE_CLOCKDIVIDER) {
+        if (getClockDividerIndexFromEeprom() != iClockDividerIndex) {
+          EEPROM.update(MEMLOC_CLOCKDIVIDERINDEX, byte(iClockDividerIndex));
+          ledRed();
+          delay(500);
+          ledOff();
+        }
+      } 
       iConfigChangeMode = CONFIGCHANGE_NONE;
       iUpdateDisplayMode = DISPLAYUPDATE_ALL;
     }
@@ -463,6 +482,18 @@ void loop() {
           iQuantizeRestartOffset += iEncoder;
           iUpdateDisplayMode = DISPLAYUPDATE_ALL;
         }
+      }
+    } else if (iConfigChangeMode == CONFIGCHANGE_CLOCKDIVIDER) {
+      if (iEncoder < 0) {
+        if(iClockDividerIndex>0){
+          iClockDividerIndex--;
+        }
+        iUpdateDisplayMode = DISPLAYUPDATE_ALL;
+      } else if (iEncoder > 0) {
+        if(iClockDividerIndex<CLOCKDIVIDERSTEPS-1){
+          iClockDividerIndex++;
+        }
+        iUpdateDisplayMode = DISPLAYUPDATE_ALL;
       }
     }
   }
@@ -788,7 +819,7 @@ void handleClockTick(uint32_t tick) {
   }
 
   //CV Gate out
-  if (!(tick % 6)) {
+  if (!(tick % (6*CLOCKDIVIDER[iClockDividerIndex]))) {
     if( bIsPlaying ){
       //unlike midi, sync clock is only sent when bIsPlaying
       digitalWrite(SYNC_TX_PIN, true);
@@ -814,7 +845,7 @@ void handleClockTick(uint32_t tick) {
     }
   }
 
-  if (!((tick - 1) % 6)) {
+  if (!((tick - 1) % (6*CLOCKDIVIDER[iClockDividerIndex]))) {
     if( bIsPlaying ){
       digitalWrite(SYNC_TX_PIN, false);
     }else{
@@ -1147,6 +1178,16 @@ uint8_t getQRSOffsetFromEeprom() {
   }
 }
 
+uint8_t getClockDividerIndexFromEeprom() {
+  uint8_t val;
+  val = EEPROM.read(MEMLOC_CLOCKDIVIDERINDEX);
+  if (val != 255) {  // a.k.a. hier wurde schonmal etwas gespeichert
+    return val;
+  } else {
+    return 0;
+  }
+}
+
 // Returns -1 / +1
 int queryEncoder() {
   int iReturn = 0;
@@ -1372,6 +1413,20 @@ void updateDisplay_128x64(bool pClearAll, bool pBLinkerOnOff, bool pClearBPM) {
       i2cDisplay.setCol(15);
     }
     i2cDisplay.print(String(iQuantizeRestartOffset));
+
+  } else if (iConfigChangeMode == CONFIGCHANGE_CLOCKDIVIDER) {
+    if (bStaticContentDrawnOnce == false) {
+      i2cDisplay.setFont(ZevvPeep8x16);
+      i2cDisplay.setInvertMode(false);
+      i2cDisplay.set1X();
+      i2cDisplay.setRow(0);
+      i2cDisplay.print("Clock Divider:");
+      i2cDisplay.setRow(3);
+      i2cDisplay.set2X();
+      bStaticContentDrawnOnce = true;
+    }
+    i2cDisplay.setCol(40);
+    i2cDisplay.print(String("/" + String(CLOCKDIVIDER[iClockDividerIndex])));
   }
 }
 
