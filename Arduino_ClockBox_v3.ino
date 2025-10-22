@@ -116,7 +116,7 @@ bool bWaitSyncStop_old = false;
 
 
 
-#define VERSION "3.46"
+#define VERSION "3.47"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -615,6 +615,7 @@ void checkMidiUSB() {
       } else {
         iTickCounter++;
       }
+      handleCVGate(iTickCounter);
       handleLED(iTickCounter);
     }
 
@@ -635,6 +636,7 @@ void checkMidiUSB() {
 
 // uClock does NOT run in this mode. Clock data are passed thru, LED pattern is handled by counting and processing impulses.
 // no tapTempo.update() since we do no show the BPM because processing and displaying potentially costs already sparse resources.
+// Furthermore, tapTempo() needs time to adjust and would make it potentially sloppy.
 void checkMidiDIN() {
   if (iConfigChangeMode != CONFIGCHANGE_NONE) {
     return;
@@ -643,7 +645,6 @@ void checkMidiDIN() {
   if (iClockMode == CLOCKMODE_FOLLOW_24PPQN_DIN) {
     if (Serial1.available() > 0) {
       midiPacket.byte1 = Serial1.read();
-      //Serial1.flush();
     } else {
       return;
     }
@@ -666,8 +667,6 @@ void checkMidiDIN() {
       return;
     }
 
-   
-
     if (midiPacket.byte1 == MIDI_CLOCK) {
 
       if ((iTickCounter == 0) || (iTickCounter == 24) || (iTickCounter == 48) || (iTickCounter == 72)) {
@@ -683,6 +682,7 @@ void checkMidiDIN() {
       } else {
         iTickCounter++;
       }
+      handleCVGate(iTickCounter);
       handleLED(iTickCounter);
     }
 
@@ -749,6 +749,7 @@ void onClockStop() {
   //ledOff();
 }
 
+/*
 uint8_t countTick(uint8_t pMultiplier) {
   if (iTickCounter >= INTERNAL_PPQN * pMultiplier - 1) {
     iTickCounter = 0;
@@ -757,6 +758,7 @@ uint8_t countTick(uint8_t pMultiplier) {
   }
   return iTickCounter;
 }
+*/
 
 void sendMidiClock() {
   midiEventPacket_t p = { 0x0F, MIDI_CLOCK, 0, 0 };
@@ -818,6 +820,11 @@ void handleClockTick(uint32_t tick) {
     
   }
 
+  handleCVGate(tick);
+  handleLED(tick);
+}
+
+void handleCVGate(uint32_t tick){
   //CV Gate out
   if (!(tick % (6*CLOCKDIVIDER[iClockDividerIndex]))) {
     if( bIsPlaying ){
@@ -860,8 +867,6 @@ void handleClockTick(uint32_t tick) {
       #endif
     }
   }
-
-  handleLED(tick);
 }
 
 void handleLED(uint32_t tick){
