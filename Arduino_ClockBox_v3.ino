@@ -116,7 +116,7 @@ bool bWaitSyncStop_old = false;
 
 
 
-#define VERSION "3.47"
+#define VERSION "3.48"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -189,7 +189,7 @@ uint8_t encoder0PosOld = 128;
 #define CLOCKMODE_FOLLOW_STARTSTOP_DIN 5
 #define CLOCKMODE_FOLLOW_STARTSTOP_USB 6
 #define MODECOUNT 4
-uint8_t arrModes[] = { CLOCKMODE_STANDALONE_A, CLOCKMODE_STANDALONE_B, CLOCKMODE_FOLLOW_24PPQN_DIN, CLOCKMODE_FOLLOW_24PPQN_USB};
+uint8_t arrModes[] = { CLOCKMODE_STANDALONE_B, CLOCKMODE_STANDALONE_A, CLOCKMODE_FOLLOW_24PPQN_DIN, CLOCKMODE_FOLLOW_24PPQN_USB};
 
 // you can define whether clock-ticks ("0xF8") are sent continuously or only when the box is playing
 // First option might improve syncing for, e.g., Ableton and other products that adopt to midi clock rather slowly
