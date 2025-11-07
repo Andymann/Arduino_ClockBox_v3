@@ -1,3 +1,9 @@
+if [[ "$(uname)" != "Darwin" ]]; then
+  echo "Ths script only works on macOS"
+  return
+else
+  echo "Runninc update script for clockbox v3"
+fi
 DIRNAME=clockboxv3Uploader
 mkdir $DIRNAME
 cd $DIRNAME
