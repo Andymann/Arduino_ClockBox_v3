@@ -1,5 +1,5 @@
 # Firmware update.   
-To find out more about the latest firmware and its features, please have a look at the [changelog](https://link-url-here.org).  
+To find out more about the latest firmware and its features, please have a look at the [changelog](https://github.com/Andymann/Arduino_ClockBox_v3/blob/main/changelog.md).  
   
 You can update the clockbox's firmware yourself. Either build it from scratch using the .ino file from the repository or select and flash a prebuilt firmware. Please note that this procedure is only available for clockboxes past the 'early-prototype' stage. Don't worry: If you own a device that does not look like hand-soldered, hand-glued and all-too-hacky you are good to go. There is no way to destroy the device with the wrong firmware. Worst case: A few buttons do not work as expected and the encoder might behave incorrectly. If this happened to you just slect the correct -hex-file and try again.  
 However, in order to successfully update a prebuilt firmware you first need to set the clockbox v3 into update mode.  
