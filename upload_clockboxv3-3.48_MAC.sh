@@ -7,7 +7,7 @@ fi
 DIRNAME=clockboxv3Uploader
 mkdir $DIRNAME
 cd $DIRNAME
-curl -OL https://raw.githubusercontent.com/Andymann/Arduino_ClockBox_v3/refs/heads/main/clockboxV3-3.47.hex
+curl -OL https://raw.githubusercontent.com/Andymann/Arduino_ClockBox_v3/refs/heads/main/clockboxV3-3.48.hex
 curl -OL https://github.com/avrdudes/avrdude/releases/download/v8.1/avrdude_v8.1_macOS_64bit.tar.gz
 tar -xvzf $(ls avrdude*)
 stty -f $(ls /dev/tty.usbmodem*) 1200
