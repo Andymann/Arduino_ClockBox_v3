@@ -2,32 +2,33 @@
 <img src="images/ClockBoxV3/yellow_front_1.png" width="400"> 
 
 ## Intro  
-Welcome to the wonderful world of tempo-syncing devices via midi.
-[Uhttps://socialmidi.com/RL](https://socialmidi.com/)
+Welcome to the wonderful world of tempo-syncing devices via midi. If you came here you probably tried to sync your DAW with a drumcomputer, a synthesizer or something else and reealized that this topic DOES have it quirks.  
+[https://socialmidi.com/RL](https://socialmidi.com/)
 ## Features
-24 PPQN  
-6 independent Midi outputs  
+6 Midi outputs  
 1 Midi input 
-1 Midi IN/ OUT via USB
-CV/Gate output
-tempo presets
-quantized restart (QRS)
-chainable  
+1 Midi IN/ OUT via USB  
+CV/Gate output  
+Tempo presets  
+Quantized Restart (QRS)  
 open source
 ## Hardware  
-
-<img src="images/ClockBoxV3/yellow_front_2.png" width="400"><img src="images/ClockBoxV3/yellow_bottom_1.png" width="400"> 
-
-
-
 ### Top view  
-Name buttons, etc
+Name buttons, etc  
+<img src="images/ClockBoxV3/yellow_top_1.png" width="400">
+
 ### Front view  
-cv gate, Mid IN
+cv gate, Mid IN  
+<img src="images/ClockBoxV3/yellow_front_1.png" width="400">  
+
 ### Rear view  
-6 Midi OUT
+6 Midi OUT  
+<img src="images/ClockBoxV3/yellow_back_1.png" width="400">  
+
 ### Back view
-The back side of the device provides additional information about the in- and outputs.
+The back side of the device provides additional information about the in- and outputs.  
+<img src="images/ClockBoxV3/yellow_bottom_1.png" width="400">  
+
 ## Basic usage  
 The ClockBox v3 can run standalone or connected to a computer. Just apply power via USB and you are good to go. When powered on the ClockBox v3 will show the currently installed firmware version for 2 seconds.
 Initially, the device is set to mode  "QRS Stop Start". This way it serves as ready-to-go tempo master. Just turn it on, connect your devices and hit PLAY.
