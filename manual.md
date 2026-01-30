@@ -55,7 +55,7 @@ To change the current mode press and hold the encoder and click the PLAY button.
 #### QRS Stop Start  
 The ClockBox v3 serves as a tempo master when this mode is selected. This is the no-worry go-to-Mode. When you are running multiple devices and you experience one ore more of them not playing in sync anmore, you can seamlessly re-sync all devices by clicking th PLAY-button while the clock is running. This engages QRS mode. The ClockBox v3 will send a MIDI STOP signal, followed by a MIDI START signal on the next "1". This ensures all devices are autmatically re-synched again without you having to worry about timing, etc.
 Example, 
-##### QRS Stop Start finetunging
+##### QRS Stop Start finetuning
 You can finetune the time between the MIDI STOP and MIDI STARTT signal. To do so, press and hold the encoder and click the STOP-button. The display will show "QRS offset (PPQN)". twisting the encoder will allow you to set this value between 1 and 24. Releasing the encoder will store the selected value. When QRS offset is set to 24 the ClockBox v3 will send a MIDI STOP signal on the 4th beat and will send MIDI START on the next "1". The value dpends on the slowest of the devices that you are running but a value of 2 proved to be sufficient for most devices.
 #### QRS Start
 The ClockBox v3 serves as a tempo master when this mode is selected. When you engage a Quantized Restart by clicking PLAY while the clock is running, the device will only send a MIDI START signal on the next '1'.
