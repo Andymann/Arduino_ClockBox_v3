@@ -1,12 +1,13 @@
 # ClockBox v3 manual
 ## Intro  
 Welcome to the wonderful world of tempo-syncing devices via midi.
-URL
+[Uhttps://socialmidi.com/RL](https://socialmidi.com/)
 ## Features
+24 PPQN  
 6 independent Midi outputs  
-Midi input
-cv gate
-USB in/ out
+1 Midi input 
+1 Midi IN/ OUT via USB
+CV/Gate output
 tempo presets
 quantized restart (QRS)
 chainable  
@@ -18,33 +19,40 @@ Name buttons, etc
 cv gate, Mid IN
 ### Rear view  
 6 Midi OUT
+### Back view
+The back side of the device provides additional information about the in- and outputs.
 ## Basic usage  
-The ClockBox v3 can run standalone or connected to a computer. Just apply power via USB and you are good. Upon start the ClockBox v3 will show the currently installed firmware version for 2 seocnds.
-Initially, the ClockBox v3 is set to mode  "QRS Stop Start". This way it serves as ready-to-go tempo master. Just turn it on, connect your devices and hit PLAY.
+The ClockBox v3 can run standalone or connected to a computer. Just apply power via USB and you are good to go. When powered on the ClockBox v3 will show the currently installed firmware version for 2 seconds.
+Initially, the device is set to mode  "QRS Stop Start". This way it serves as ready-to-go tempo master. Just turn it on, connect your devices and hit PLAY.
 Diagram. Example: Ableton- midi config
 ### Set the tempo
-Tempo can be set via Tap, encoder and preset buttons
-#### Tap
-#### Encoder  
-#### Preset buttons
-Set, fade
-#### Save preset
-## Advanced usage  
-### Modes  
-Explain mode here. What is a mode, why does it matter? The ClockBox v3 can serve as tempo master or tmepo follower.
-You can finetune the behaviour of the ClockBox v3 in order to fit into your setup.
+The tempo can be set by tapping the TAP-button, dialing in the tempo with the encoder and by selecting previously saved values via preset buttons. Twisting the encoder will increase the value by +/-1. Pressing down on the encoder while turning it will change the tempo by +/-5. Short-clicking one of the preset buttons immediately recalls the previously stored tempo-value, pressing and holding the button for more than 2 seconds will make the ClockBox v3 fade to the new tempo.
+### Save a tempo-preset
+To save a preset press and hold the encoder and click one of the preset-buttons. The LEDs on top will flash red to show that the new value has successfully been saved.
+### QRS: Quantized Restart
+Just hit PLAY while the clock is running to fix everything.  
+  
+
+Quantized Restart allows for devices being seamlessly re-synced to the running clock without the need for stopping and re-starting everything. With multiple devices being connected to one common clock source there is always the chance of individual devices facing issues with tempodrift or other problems. When you realize thatone or more devices are not playing in sync anymore, simply hit PLAY while the clock is running. The LEDs on top will change their colour and all devices will automatically be re-synced on the next "1".
+## Advanced usage
+### Modes
+With firmware version 3.49 the ClockBox v3 has 4 different modes which allow the device to perfectly fit into your setup:  
+-QRS Stop Start  
+-QRS Start   
+-Follow Clock from DIN Midi  
+-Follow Clock from USB  
+The selected mode is shown in the lower part of the display.
 ### Changing the mode  
-Explain the button combination to change mode, modes are saved.
+To change the current mode press and hold the encoder and click the PLAY button. The name of the new mode will be shown in the display. Repeat these steps to cycle through all available modes. The current mode is automatically saved and will be recalled when the ClockBox v3 is powered on the next time.
 #### QRS Stop Start  
-The ClockBox v3 serves as a tempo master.
-Example, 24 PPQN
-##### QRS offset
+The ClockBox v3 serves as a tempo master when this mode is selected. This is the no-worry go-to-Mode. When you are running multiple devices and you experience one ore more of them not playing in sync anmore, you can seamlessly re-sync all devices by clicking th PLAY-button while the clock is running. This engages QRS mode. The ClockBox v3 will send a MIDI STOP signal, followed by a MIDI START signal on the next "1". This ensures all devices are autmatically re-synched again without you having to worry about timing, etc.
+Example, 
+##### QRS Stop Start finetunging
+You can finetune the time between the MIDI STOP and MIDI STARTT signal. To do so, press and hold the encoder and click the STOP-button. The display will show "QRS offset (PPQN)". twisting the encoder will allow you to set this value between 1 and 24. Releasing the encoder will store the selected value. When QRS offset is set to 24 the ClockBox v3 will send a MIDI STOP signal on the 4th beat and will send MIDI START on the next "1". The value dpends on the slowest of the devices that you are running but a value of 2 proved to be sufficient for most devices.
 #### QRS Start
-The ClockBox v3 serves as a tempo master. Output via Midi OUT and USB
-Example, 24 PPWN
+The ClockBox v3 serves as a tempo master when this mode is selected. When you engage a Quantized Restart by clicking PLAY while the clock is running, the device will only send a MIDI START signal on the next '1'.
 #### Follow clock from DIN Midi  
-The ClockBox v3 serves as a tempo follower. It receives and processes incoming tempo data from Midi IN.
-Diagram, clock chain, QRS, 24 PPQN
+The ClockBox v3 serves as a tempo follower. It receives and processes incoming tempo data from Midi IN. Incoming clock data are sent to the 6 Midi OUT on the back of the device and to USB.
 #### Follow clock from Usb Midi  
 The ClockBox v3 serves as a tempo follower. It receives and processes incoming tempo data from Midi USB.
 Diagram, clock chain, QRS, 24 PPWN

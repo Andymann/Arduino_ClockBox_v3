@@ -12,7 +12,7 @@
     ToDO: Documentation for incoming midiclock (in via usb, out via ?)
           why uclock AND taptempo? => uClock.tap() ist noch nicht implementiert
 
-    
+    2Do 29.01.26: RESET MODE
 */
 
 #include <light_CD74HC4067.h>
