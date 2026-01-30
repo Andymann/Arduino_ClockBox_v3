@@ -1,4 +1,6 @@
 # ClockBox v3 manual
+<img src="images/ClockBoxV3/yellow_front_1.png" width="400"> 
+
 ## Intro  
 Welcome to the wonderful world of tempo-syncing devices via midi.
 [Uhttps://socialmidi.com/RL](https://socialmidi.com/)
@@ -13,6 +15,11 @@ quantized restart (QRS)
 chainable  
 open source
 ## Hardware  
+
+<img src="images/ClockBoxV3/yellow_front_2.png" width="400"><img src="images/ClockBoxV3/yellow_bottom_1.png" width="400"> 
+
+
+
 ### Top view  
 Name buttons, etc
 ### Front view  
