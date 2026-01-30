@@ -116,7 +116,7 @@ bool bWaitSyncStop_old = false;
 
 
 
-#define VERSION "3.48"
+#define VERSION "3.49"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -181,6 +181,7 @@ bool encoder0PinBLast = false;
 uint8_t encoder0Pos = 128;
 uint8_t encoder0PosOld = 128;
 
+bool bFadePreset = true;
 
 #define CLOCKMODE_STANDALONE_A 1  // Send Midi-Start on quantized restart
 #define CLOCKMODE_STANDALONE_B 2  // Send Midi Stop-Start on quantized restart
@@ -237,17 +238,23 @@ void setup() {
   btnHelper_STOP.setButtonStateFunction(stopButtonStateHandler);
   btnHelper_STOP.setTapHandler(stopHandler);
 
-  btnHelper_PRESET1.begin(VIRTUAL_PIN);
+  btnHelper_PRESET1.begin(VIRTUAL_PIN, INPUT, false);
   btnHelper_PRESET1.setButtonStateFunction(preset1ButtonStateHandler);
-  btnHelper_PRESET1.setTapHandler(preset1ClickHandler);
+  btnHelper_PRESET1.setLongClickTime(1000);
+  btnHelper_PRESET1.setClickHandler(preset1ClickHandler);
+  btnHelper_PRESET1.setLongClickDetectedHandler(preset1LongclickHandler);
 
-  btnHelper_PRESET2.begin(VIRTUAL_PIN);
+  btnHelper_PRESET2.begin(VIRTUAL_PIN, INPUT, false);
   btnHelper_PRESET2.setButtonStateFunction(preset2ButtonStateHandler);
-  btnHelper_PRESET2.setTapHandler(preset2ClickHandler);
+  btnHelper_PRESET2.setLongClickTime(1000);
+  btnHelper_PRESET2.setClickHandler(preset2ClickHandler);
+  btnHelper_PRESET2.setLongClickDetectedHandler(preset2LongclickHandler);
 
-  btnHelper_PRESET3.begin(VIRTUAL_PIN);
+  btnHelper_PRESET3.begin(VIRTUAL_PIN, INPUT, false);
   btnHelper_PRESET3.setButtonStateFunction(preset3ButtonStateHandler);
-  btnHelper_PRESET3.setTapHandler(preset3ClickHandler);
+  btnHelper_PRESET3.setLongClickTime(1000);
+  btnHelper_PRESET3.setClickHandler(preset3ClickHandler);
+  btnHelper_PRESET3.setLongClickDetectedHandler(preset3LongclickHandler);
 
 #ifdef DISPLAY_128x64
   Wire.begin();
@@ -499,7 +506,12 @@ void loop() {
   }
 
   if (iNextPreset != NEXTPRESET_NONE) {
-    selectPreset(iNextPreset);
+    //selectPreset(iNextPreset);
+    if( !bFadePreset ){
+      setPreset( iNextPreset );
+    }else{
+      fadePreset( iNextPreset );
+    }
     iNextPreset = NEXTPRESET_NONE;
   }
 
@@ -530,7 +542,8 @@ void loop() {
 void nextBeat(){
   //Tempo-ease
   if(fTargetBPM != TARGET_BPM_NONE){
-    if((abs(uClock.getTempo() - fTargetBPM)>3.) && ( bIsPlaying )){
+    //if((abs(uClock.getTempo() - fTargetBPM)>3.) && ( bIsPlaying )){
+      if((abs(uClock.getTempo() - fTargetBPM)>3.) && ( bFadePreset )){
       setGlobalBPM( uClock.getTempo()  + fBPM_Diff/16.);
     }else{
       setGlobalBPM( fTargetBPM );
@@ -690,6 +703,7 @@ void checkMidiDIN() {
   } 
 }
 
+/*
 void selectPreset(uint8_t pPresetID) {
   if( !bIsPlaying ){
     if (pPresetID == NEXTPRESET_1) {
@@ -716,7 +730,34 @@ void selectPreset(uint8_t pPresetID) {
     iBeatCounter = 0;
   }
 }
+*/
 
+void setPreset(uint8_t pPresetID){
+   if (pPresetID == NEXTPRESET_1) {
+      fBPM_Cache = uint8_t(fBPM_Preset1);
+      setGlobalBPM(fBPM_Preset1);
+    } else if (pPresetID == NEXTPRESET_2) {
+      fBPM_Cache = uint8_t(fBPM_Preset2);
+      setGlobalBPM(fBPM_Preset2);
+    } else if (pPresetID == NEXTPRESET_3) {
+      fBPM_Cache = uint8_t(fBPM_Preset3);
+      setGlobalBPM(fBPM_Preset3);
+    }
+    iUpdateDisplayMode = DISPLAYUPDATE_ALL;
+}
+
+void fadePreset(uint8_t pPresetID){
+  // Tempo-ease, Tempo-fade
+    if (pPresetID == NEXTPRESET_1) {
+      fTargetBPM = fBPM_Preset1;
+    } else if (pPresetID == NEXTPRESET_2) {
+      fTargetBPM = fBPM_Preset2;
+    } else if (pPresetID == NEXTPRESET_3) {
+      fTargetBPM = fBPM_Preset3;
+    }
+    fBPM_Diff = fTargetBPM - uClock.getTempo();
+    iBeatCounter = 0;
+}
 
 void readMux() {
   // loop through channels 0 - 15
@@ -995,6 +1036,34 @@ void preset1ClickHandler(Button2& btn) {
       }
     } else {
       iNextPreset = NEXTPRESET_1;
+      bFadePreset = false;
+    }
+  }
+}
+
+void preset1LongclickHandler(Button2& btn){
+  if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B)) {
+    if (muxValue[ENCODERCLICK] == 0) {
+      iNextPreset = NEXTPRESET_1;
+      bFadePreset = true;
+    }
+  }
+}
+
+void preset2LongclickHandler(Button2& btn){
+  if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B)) {
+    if (muxValue[ENCODERCLICK] == 0) {
+      iNextPreset = NEXTPRESET_2;
+      bFadePreset = true;
+    }
+  }
+}
+
+void preset3LongclickHandler(Button2& btn){
+  if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B)) {
+    if (muxValue[ENCODERCLICK] == 0) {
+      iNextPreset = NEXTPRESET_3;
+      bFadePreset = true;
     }
   }
 }
@@ -1017,7 +1086,7 @@ byte preset2ButtonStateHandler() {
 void preset2ClickHandler(Button2& btn) {
   if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B)) {
     if (muxValue[ENCODERCLICK] == 1) {
-      fBPM_Preset2 = tapTempo.getBPM();
+      fBPM_Preset1 = tapTempo.getBPM();
       if (EEPROM.read(MEMLOC_PRESET_2) != byte(fBPM_Preset2)) {
         EEPROM.update(MEMLOC_PRESET_2, byte(fBPM_Preset2));
         ledRed();
@@ -1028,6 +1097,7 @@ void preset2ClickHandler(Button2& btn) {
       }
     } else {
       iNextPreset = NEXTPRESET_2;
+      bFadePreset = false;
     }
   }
 }
@@ -1052,6 +1122,7 @@ void preset3ClickHandler(Button2& btn) {
       }
     } else {
       iNextPreset = NEXTPRESET_3;
+      bFadePreset = false;
     }
   }
 }
