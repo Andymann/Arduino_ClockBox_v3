@@ -116,7 +116,7 @@ bool bWaitSyncStop_old = false;
 
 
 
-#define VERSION "3.49"
+#define VERSION "3.50"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -129,7 +129,7 @@ CD74HC4067 mux(6, 7, 8, 9);  // create a new CD74HC4067 object with its four sel
 #define DATA_PIN 10
 #define LED_ON 59  //60
 #define LED_OFF 0
-Adafruit_NeoPixel pixels(NUM_LEDS, DATA_PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel pixels(NUM_LEDS+1, DATA_PIN, NEO_GRB + NEO_KHZ800);
 
 #define MIDI_CLOCK 0xF8
 #define MIDI_START 0xFA
@@ -187,8 +187,6 @@ bool bFadePreset = true;
 #define CLOCKMODE_STANDALONE_B 2  // Send Midi Stop-Start on quantized restart
 #define CLOCKMODE_FOLLOW_24PPQN_DIN 3
 #define CLOCKMODE_FOLLOW_24PPQN_USB 4
-#define CLOCKMODE_FOLLOW_STARTSTOP_DIN 5
-#define CLOCKMODE_FOLLOW_STARTSTOP_USB 6
 #define MODECOUNT 4
 uint8_t arrModes[] = { CLOCKMODE_STANDALONE_B, CLOCKMODE_STANDALONE_A, CLOCKMODE_FOLLOW_24PPQN_DIN, CLOCKMODE_FOLLOW_24PPQN_USB};
 
@@ -528,8 +526,16 @@ void loop() {
       updateDisplay(true, false, false);
     } else if (iUpdateDisplayMode == DISPLAYUPDATE_BLINKER_ON) {
       updateDisplay(false, true, false);
+      if ((iClockMode == CLOCKMODE_FOLLOW_24PPQN_DIN)||(iClockMode == CLOCKMODE_FOLLOW_24PPQN_USB)){
+        pixels.setPixelColor(4, pixels.Color(LED_ON, LED_ON, LED_OFF));
+        pixels.show();
+      }
     } else if (iUpdateDisplayMode == DISPLAYUPDATE_BLINKER_OFF) {
       updateDisplay(false, false, false);
+      if ((iClockMode == CLOCKMODE_FOLLOW_24PPQN_DIN)||(iClockMode == CLOCKMODE_FOLLOW_24PPQN_USB)){
+        pixels.setPixelColor(4, pixels.Color(LED_OFF, LED_OFF, LED_OFF));
+        pixels.show();
+      }
     } else if (iUpdateDisplayMode == DISPLAYUPDATE_BPM) {
       updateDisplay(false, false, true);
     }
@@ -632,17 +638,6 @@ void checkMidiUSB() {
       handleLED(iTickCounter);
     }
 
-  } else if (iClockMode == CLOCKMODE_FOLLOW_STARTSTOP_USB) {
-
-    if (midiPacket.byte1 == MIDI_START) {
-      startPlaying(true);
-      return;
-    }
-
-    if (midiPacket.byte1 == MIDI_STOP) {
-      stopPlaying(true);
-      return;
-    }
   }
 }
 
