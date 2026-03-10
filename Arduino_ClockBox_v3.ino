@@ -113,10 +113,11 @@ bool bWaitSyncStop_old = false;
 #define MEMLOC_MODE 40
 #define MEMLOC_QRSOFFSET 50
 #define MEMLOC_CLOCKDIVIDERINDEX 60
+#define MEMLOC_LED_ON 70
 
 
 
-#define VERSION "3.50"
+#define VERSION "3.51"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -127,8 +128,10 @@ CD74HC4067 mux(6, 7, 8, 9);  // create a new CD74HC4067 object with its four sel
 
 #define NUM_LEDS 4
 #define DATA_PIN 10
-#define LED_ON 59  //60
+uint8_t LED_ON = 50;  // LED brightness, adjustable 100-200 via brightness mode
 #define LED_OFF 0
+#define LED_MAXBRIGHT 200
+#define LED_MINBRIGHT 10
 Adafruit_NeoPixel pixels(NUM_LEDS+1, DATA_PIN, NEO_GRB + NEO_KHZ800);
 
 #define MIDI_CLOCK 0xF8
@@ -265,6 +268,12 @@ void setup() {
   iClockMode = getModeFromEeprom();
   iQuantizeRestartOffset = getQRSOffsetFromEeprom();
   iClockDividerIndex = getClockDividerIndexFromEeprom();
+  {
+    uint8_t val = EEPROM.read(MEMLOC_LED_ON);
+    if (val >= LED_MINBRIGHT && val <= LED_MAXBRIGHT) {
+      LED_ON = val;
+    }
+  }
 
   readMux();
   if (muxValue[STOPBUTTON] == 1) {
@@ -373,6 +382,7 @@ const uint8_t CONFIGCHANGE_NONE = 0;
 const uint8_t CONFIGCHANGE_MODE = 1;
 const uint8_t CONFIGCHANGE_QRS = 2;
 const uint8_t CONFIGCHANGE_CLOCKDIVIDER = 3;
+const uint8_t CONFIGCHANGE_BRIGHTNESS = 4;
 uint8_t iConfigChangeMode = CONFIGCHANGE_NONE;
 
 
@@ -414,6 +424,11 @@ void loop() {
       iConfigChangeMode = CONFIGCHANGE_CLOCKDIVIDER;
       iUpdateDisplayMode = DISPLAYUPDATE_ALL;
     }
+  } else if ((muxValue[STARTBUTTON] == 1) && (muxValue[STOPBUTTON] == 1) && (muxValue[ENCODERCLICK] == 0)) {
+    if (iConfigChangeMode == CONFIGCHANGE_NONE) {
+      iConfigChangeMode = CONFIGCHANGE_BRIGHTNESS;
+      iUpdateDisplayMode = DISPLAYUPDATE_ALL;
+    }
   }
 
 
@@ -433,7 +448,14 @@ void loop() {
           delay(500);
           ledOff();
         }
-      } 
+      } else if (iConfigChangeMode == CONFIGCHANGE_BRIGHTNESS) {
+        if (EEPROM.read(MEMLOC_LED_ON) != LED_ON) {
+          EEPROM.update(MEMLOC_LED_ON, LED_ON);
+          ledRed();
+          delay(500);
+          ledOff();
+        }
+      }
       iConfigChangeMode = CONFIGCHANGE_NONE;
       iUpdateDisplayMode = DISPLAYUPDATE_ALL;
     }
@@ -500,6 +522,12 @@ void loop() {
         }
         iUpdateDisplayMode = DISPLAYUPDATE_ALL;
       }
+    } else if (iConfigChangeMode == CONFIGCHANGE_BRIGHTNESS) {
+      int newVal = (int)LED_ON + iEncoder*10;
+      if (newVal < LED_MINBRIGHT) newVal = LED_MINBRIGHT;
+      if (newVal > LED_MAXBRIGHT) newVal = LED_MAXBRIGHT;
+      LED_ON = (uint8_t)newVal;
+      iUpdateDisplayMode = DISPLAYUPDATE_ALL;
     }
   }
 
@@ -1498,6 +1526,19 @@ void updateDisplay_128x64(bool pClearAll, bool pBLinkerOnOff, bool pClearBPM) {
     }
     i2cDisplay.setCol(40);
     i2cDisplay.print(String("/" + String(CLOCKDIVIDER[iClockDividerIndex])));
+  } else if (iConfigChangeMode == CONFIGCHANGE_BRIGHTNESS) {
+    if (bStaticContentDrawnOnce == false) {
+      i2cDisplay.setFont(ZevvPeep8x16);
+      i2cDisplay.setInvertMode(false);
+      i2cDisplay.set1X();
+      i2cDisplay.setRow(0);
+      i2cDisplay.print("LED Brightness:");
+      i2cDisplay.setRow(3);
+      i2cDisplay.set2X();
+      bStaticContentDrawnOnce = true;
+    }
+    i2cDisplay.setCol(30);
+    i2cDisplay.print(String(LED_ON) + "  ");
   }
 }
 

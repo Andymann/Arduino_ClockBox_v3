@@ -17,7 +17,7 @@ With the ClockBox v3, syncing is no longer a problem.
 - CV/Gate sync output
 - 3 tempo presets with optional smooth fade
 - Quantized Restart (QRS)
-- 4 clock modes (standalone / follower)
+- 4 clock modes (standalone / follow-mode)
 - Open source
 
 ---
