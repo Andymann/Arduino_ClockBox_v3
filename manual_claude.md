@@ -173,6 +173,18 @@ Default: /1 (one pulse per 24th note; i.e., the raw 24 PPQN rate)
 
 ---
 
+### LED Brightness
+
+Adjusts the brightness of the five LEDs.
+
+**Enter:** Hold **PLAY (START) + STOP** while the deviceis powered on. (encoder button must not be held)
+**Adjust:** Turn encoder (±10 per click), range: 10–200
+**Save & exit:** Release both buttons — LEDs flash red to confirm
+
+The value is saved to internal memory and recalled upon startup.
+
+---
+
 ## Reset the Device
 
 **Reset clock mode to default (Standalone, QRS Stop Start):**
@@ -219,9 +231,10 @@ All settings persist through power cycles.
 | Preset 1 BPM | 80 |
 | Preset 2 BPM | 100 |
 | Preset 3 BPM | 120 |
-| Clock Mode | QRS Standalone A |
+| Clock Mode | QRS Stop Start |
 | QRS Offset | 1 |
 | Clock Divider | /1 |
+| LED Brightness | 50 |
 
 ---
 
@@ -233,5 +246,6 @@ All settings persist through power cycles.
 |---|---|
 | 0.5 | autog-generated stub |
 | 0.6 | fix typos, add details |
+| 0.7 | add LED brightness settings |
 
 ---
