@@ -117,7 +117,7 @@ bool bWaitSyncStop_old = false;
 
 
 
-#define VERSION "3.51"
+#define VERSION "3.52"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -239,20 +239,20 @@ void setup() {
   btnHelper_STOP.setButtonStateFunction(stopButtonStateHandler);
   btnHelper_STOP.setTapHandler(stopHandler);
 
-  btnHelper_PRESET1.begin(VIRTUAL_PIN, INPUT, false);
   btnHelper_PRESET1.setButtonStateFunction(preset1ButtonStateHandler);
+  btnHelper_PRESET1.begin(VIRTUAL_PIN, INPUT, false);
   btnHelper_PRESET1.setLongClickTime(1000);
   btnHelper_PRESET1.setClickHandler(preset1ClickHandler);
   btnHelper_PRESET1.setLongClickDetectedHandler(preset1LongclickHandler);
 
-  btnHelper_PRESET2.begin(VIRTUAL_PIN, INPUT, false);
   btnHelper_PRESET2.setButtonStateFunction(preset2ButtonStateHandler);
+  btnHelper_PRESET2.begin(VIRTUAL_PIN, INPUT, false);
   btnHelper_PRESET2.setLongClickTime(1000);
   btnHelper_PRESET2.setClickHandler(preset2ClickHandler);
   btnHelper_PRESET2.setLongClickDetectedHandler(preset2LongclickHandler);
 
-  btnHelper_PRESET3.begin(VIRTUAL_PIN, INPUT, false);
   btnHelper_PRESET3.setButtonStateFunction(preset3ButtonStateHandler);
+  btnHelper_PRESET3.begin(VIRTUAL_PIN, INPUT, false);
   btnHelper_PRESET3.setLongClickTime(1000);
   btnHelper_PRESET3.setClickHandler(preset3ClickHandler);
   btnHelper_PRESET3.setLongClickDetectedHandler(preset3LongclickHandler);
