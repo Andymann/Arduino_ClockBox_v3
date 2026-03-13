@@ -117,7 +117,7 @@ bool bWaitSyncStop_old = false;
 
 
 
-#define VERSION "3.52"
+#define VERSION "3.53"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -968,7 +968,9 @@ void handleLED(uint32_t tick){
 
 void tapHandler(Button2& btn) {
   if ((iClockMode == CLOCKMODE_STANDALONE_A) || (iClockMode == CLOCKMODE_STANDALONE_B)) {
-    tapTempo.update(true);
+    if (millis() - tapTempo.getLastTapTime() >= 250) {
+      tapTempo.update(true);
+    }
   }
 }
 
