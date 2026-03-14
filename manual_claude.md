@@ -116,15 +116,23 @@ Over time, individual devices can drift out of sync even when connected to the s
 The ClockBox v3 has four modes that determine how it generates or reacts to a clock signal. The active mode is shown at the bottom of the display and is saved automatically.
 
 #### QRS Stop Start *(default)*
+<img src="images/display/screen_qrs_stopstart.jpg" width="300">
+  
 The ClockBox acts as the master clock. When Quantized Restart is triggered (PLAY while running), it sends **MIDI Stop** slightly before the downbeat, then **MIDI Start** exactly on beat 1. This mode covers probably ~90% of all setups.
 
 #### QRS Start
+<img src="images/display/screen_qrs_start.jpg" width="300">
+
 The ClockBox acts as the master clock. Quantized Restart only sends a **MIDI Start** on the next downbeat — no Stop message.
 
 #### Follow Clock from DIN MIDI
+<img src="images/display/screen_follow_din.jpg" width="300">
+
 The ClockBox receives a 24 PPQN MIDI clock signal on the **MIDI IN** (TRS, Type A) jack and forwards it to all outputs (6 TRS MIDI OUT + USB). BPM is not displayed in this mode to keep the clock pass-through as tight as possible. The internal clock generator is bypassed. 
 
 #### Follow Clock from USB MIDI
+<img src="images/display/screen_follow_usb.jpg" width="300">
+
 Same as above, but the clock source is **USB MIDI** instead of TRS. Incoming clock data are forwarded to the TRS MIDI outputs.
 
 Both follow modes also for Qunatized Restart to be triggered. 
@@ -140,6 +148,8 @@ The new mode appears on the display and is saved immediately.
 ### QRS Offset Fine-Tuning
 
 In QRS Stop Start mode, you can adjust the timing gap between the MIDI Stop and MIDI Start messages.
+
+<img src="images/display/screen_qrs_offset.jpg" width="300">
 
 **Enter:** Hold **ENCODER + press STOP**
 **Adjust:** Turn encoder (range: 1–24 PPQN ticks)
@@ -164,6 +174,9 @@ The front-panel CV/Gate jack outputs a tempo pulse that can trigger Eurorack seq
 
 Divides the CV/Gate output rate relative to the master clock.
 
+<img src="images/display/screen_clock_divider.jpg" width="300">
+
+
 **Enter:** Hold **ENCODER + press TAP**
 **Adjust:** Turn encoder
 **Save & exit:** Release both buttons — LEDs flash red to confirm
@@ -176,6 +189,8 @@ Default: /1 (one pulse per 24th note; i.e., the raw 24 PPQN rate)
 ### LED Brightness
 
 Adjusts the brightness of the five LEDs.
+
+<img src="images/display/screen_led_brightness.jpg" width="300">
 
 **Enter:** Hold **PLAY (START) + STOP** while the deviceis powered on. (encoder button must not be held)
 **Adjust:** Turn encoder (±10 per click), range: 10–200
@@ -196,6 +211,8 @@ Power off, hold **STOP + TAP**, power on. The display shows "ClockMode reset" an
 
 ### When to Update
 Update the firmware to access new features or bug fixes published at socialmidi.com.
+
+<img src="images/display/screen_update_mode.jpg" width="300">
 
 ### Entering Update Mode
 
