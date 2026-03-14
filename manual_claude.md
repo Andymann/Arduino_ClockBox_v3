@@ -264,5 +264,6 @@ All settings persist through power cycles.
 | 0.5 | autog-generated stub |
 | 0.6 | fix typos, add details |
 | 0.7 | add LED brightness settings |
+| 0.8 | add display renderings |
 
 ---
