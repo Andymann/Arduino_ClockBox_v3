@@ -135,7 +135,7 @@ def screen_qrs_offset(val=2):
     img, draw = make_canvas()
     put(draw, 0,  0, "QRS Offset(PPQN):", f_small)
     x = 30 if val < 100 else 15
-    put(draw, x, 20, str(val), f_bpm)
+    put(draw, x, 14, str(val), f_bpm)
     save(img, "screen_qrs_offset")
 
 
@@ -143,7 +143,7 @@ def screen_clock_divider(val=1):
     """Clock Divider editor"""
     img, draw = make_canvas()
     put(draw,  0,  0, "Clock Divider:", f_small)
-    put(draw, 40, 20, f"/{val}",        f_bpm)
+    put(draw, 40, 14, f"/{val}",        f_bpm)
     save(img, "screen_clock_divider")
 
 
@@ -152,7 +152,7 @@ def screen_led_brightness(val=50):
     img, draw = make_canvas()
     put(draw,  0,  0, "LED Brightness:", f_small)
     x = 30 if val < 100 else 15
-    put(draw, x, 20, str(val), f_bpm)
+    put(draw, x, 14, str(val), f_bpm)
     save(img, "screen_led_brightness")
 
 
