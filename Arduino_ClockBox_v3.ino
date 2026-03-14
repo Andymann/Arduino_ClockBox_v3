@@ -117,7 +117,7 @@ bool bWaitSyncStop_old = false;
 
 
 
-#define VERSION "3.53"
+#define VERSION "3.54"
 #define DEMUX_PIN A0
 
 #define SYNC_TX_PIN A2
@@ -581,7 +581,9 @@ void nextBeat(){
       setGlobalBPM( uClock.getTempo()  + fBPM_Diff/16.);
     }else{
       setGlobalBPM( fTargetBPM );
+      fBPM_Cache = uint8_t(fTargetBPM);
       fTargetBPM = TARGET_BPM_NONE;
+      iUpdateDisplayMode = DISPLAYUPDATE_ALL;
     }
   }
 }
