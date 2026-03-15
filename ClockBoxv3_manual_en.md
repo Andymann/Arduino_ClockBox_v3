@@ -17,37 +17,38 @@ With ClockBox v3, syncing is no longer a problem.
 - CV/Gate sync output
 - 3 tempo presets with optional smooth fade
 - Quantized Restart (QRS)
-- 4 clock modes (standalone / follow-mode)
+- 4 clock modes (2 standalone / 2 follow-mode)
 - Open source
 
 ---
 
 ## Hardware
 
-### Top view
+### Top panel
 <img src="images/ClockBoxV3/yellow_top_1.png" width="400">
 
-**Controls (top panel):**
+**Controls:**
 
-| Label | Type | Function |
-|---|---|---|
-| TAP | Button | Tap tempo |
-| PLAY (START) | Button | Start / Quantized Restart |
-| STOP | Button | Stop |
-| PRESET 1 / 2 / 3 | Button | Recall or save BPM presets |
-| ENCODER | Rotary + click | Adjust BPM / navigate settings |
-| Display | 128×64 | Shows BPM and mode info |
-| LEDs (×5) | NeoPixel | Beat and status indicators |
+| Label | Function |
+|---|---|
+| TAP | Tap tempo |
+| PLAY (START) | Start / Quantized Restart |
+| STOP | Stop |
+| PRESET 1 / 2 / 3 | Recall or save BPM presets |
+| ENCODER | Adjust BPM / navigate settings |
+| Display | Shows BPM and mode info |
+| LEDs (×5) | Beat and status indicators |
 
-### Front view
-CV/Gate, MIDI IN
+### Front panel
+The front panel provides three I/O connections: **CV Start**, **CV Clock**, and **MIDI IN** (TRS). CV outputs carry 5V logic-level; MIDI IN accepts standard TRS MIDI (Type A).  
 <img src="images/ClockBoxV3/yellow_front_1.png" width="400">
 
-### Rear view
-6 MIDI OUT
+### Rear panel
+The rear panel exposes six independent **MIDI OUT** ports (TRS) and a **USB** port for MIDI communication and firmware updates. All MIDI OUT ports transmit the same clock signal simultaneously.  
 <img src="images/ClockBoxV3/yellow_back_1.png" width="400">
 
-### Back view
+### Bottom panel
+The bottom panel carries a labelled silkscreen identifying all I/O connections.  
 <img src="images/ClockBoxV3/yellow_bottom_1.png" width="400">
 
 ---
@@ -281,12 +282,13 @@ waste.
 <br/>
 
 ## Document versions
-| version | description |
+| version | changes |
 |---|---|
 | 0.5 | auto-generated stub |
 | 0.6 | fix typos, add details |
 | 0.7 | add LED brightness settings |
 | 0.8 | add display renderings |
 | 0.9 | add declaration of conformity |
+| 1.0 | finetune views and descriptions |
 
 ---
