@@ -281,6 +281,8 @@ waste.
 <br/>
 <br/>
 
+## Open soure
+Find sourcecode, diagrams, etc at [https://github.com/Andymann/clockbox-v3](https://github.com/Andymann/clockbox-v3)
 ## Document versions
 | version | changes |
 |---|---|
